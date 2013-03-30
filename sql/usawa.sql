@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost:3306
--- Généré le: Sam 30 Mars 2013 à 18:35
+-- Généré le: Sam 30 Mars 2013 à 21:03
 -- Version du serveur: 5.6.10
 -- Version de PHP: 5.4.12
 
@@ -38,19 +38,6 @@ CREATE TABLE IF NOT EXISTS `cluster` (
   PRIMARY KEY (`cluster_id`),
   UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='List of clusters' AUTO_INCREMENT=18 ;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `group_in_sync_group`
---
-
-CREATE TABLE IF NOT EXISTS `group_in_sync_group` (
-  `sync_group_id` smallint(5) unsigned NOT NULL,
-  `virtual_router_id` tinyint(3) unsigned NOT NULL,
-  PRIMARY KEY (`sync_group_id`,`virtual_router_id`),
-  KEY `virtual_router_id` (`virtual_router_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='List of VRRP instances in sync group';
 
 -- --------------------------------------------------------
 
@@ -238,10 +225,13 @@ CREATE TABLE IF NOT EXISTS `vrrp_instance` (
   `notify` varchar(255) DEFAULT NULL COMMENT 'Script to run during ANY state transit',
   `smtp_alert` tinyint(1) DEFAULT NULL COMMENT 'Send email notif during state transit',
   `cluster_id` smallint(5) unsigned DEFAULT NULL,
+  `sync_group_id` smallint(5) unsigned DEFAULT NULL,
   `comment` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`virtual_router_id`),
   UNIQUE KEY `name` (`name`),
-  KEY `cluster_id` (`cluster_id`)
+  KEY `cluster_id` (`cluster_id`),
+  KEY `sync_group_id` (`sync_group_id`),
+  KEY `sync_group_id_2` (`sync_group_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Contains all vrrp instances';
 
 -- --------------------------------------------------------
@@ -282,13 +272,6 @@ CREATE TABLE IF NOT EXISTS `vrrp_sync_group` (
 --
 -- Contraintes pour les tables exportées
 --
-
---
--- Contraintes pour la table `group_in_sync_group`
---
-ALTER TABLE `group_in_sync_group`
-  ADD CONSTRAINT `group_in_sync_group_ibfk_1` FOREIGN KEY (`virtual_router_id`) REFERENCES `vrrp_instance` (`virtual_router_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `group_in_sync_group_ibfk_2` FOREIGN KEY (`sync_group_id`) REFERENCES `vrrp_sync_group` (`sync_group_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Contraintes pour la table `ip_address`
@@ -334,6 +317,7 @@ ALTER TABLE `vrrp_details_per_server`
 -- Contraintes pour la table `vrrp_instance`
 --
 ALTER TABLE `vrrp_instance`
+  ADD CONSTRAINT `vrrp_instance_ibfk_2` FOREIGN KEY (`sync_group_id`) REFERENCES `vrrp_instance` (`sync_group_id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `vrrp_instance_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `cluster` (`cluster_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
