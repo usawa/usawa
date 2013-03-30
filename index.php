@@ -785,7 +785,7 @@ function table_ip_adresses($type, $id)
       <td>
         <a href="form_ip_address.php?ip=<?php echo $ip ?>" rel="modal:open"><img src="icons/network_ip_edit.png" title="Edit IP Address" /></a>
         &nbsp;
-<!--         <a href="?action=delete&ip=<?php echo $ip ?>" onclick="return(confirm('Delete IP <?php echo $ip ?> ?'));"><img src="icons/network_ip_delete.png" title="Delete IP Address" /></a> -->
+        <a href="?action=delete&ip=<?php echo $ip ?>" onclick="return(confirm('Delete IP <?php echo $ip ?> ?'));"><img src="icons/network_ip_delete.png" title="Delete IP Address" /></a>
       </td>
     </tr>
 <?php
