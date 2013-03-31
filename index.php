@@ -722,6 +722,110 @@ function delete_vrrp_instance($virtual_router_id = NULL)
   redirect_to($_SERVER['HTTP_REFERER']);
 }
 
+/* 
+  --------------------------------------------------------------
+    VRRP Sync group functions
+  --------------------------------------------------------------
+*/
+function table_vrrp_sync_group($sync_group_id = NULL)
+{
+  global $mysqli;
+
+  $vrrp_sync_group_dictionnary = array ('name', 'notify_master', 'notify_backup', 'notify_fault', 'notify', 'smtp_alert');
+  
+  $unique = false;
+  
+  $sql = "select
+              name,
+              notify_master,
+              notify_backup,
+              notify_fault,
+              notify,
+              smtp_alert
+        from  vrrp_sync_group ";
+  if (! is_null($sync_group_id) ) 
+  {
+    $sql .= "where sync_group_id='$sync_group_id'";
+    $unique = true ; 
+  }
+
+  $res = $mysqli->query($sql);
+  if( ! $res ) {
+    echo $mysqli->error;
+    exit;
+  }
+
+  if($unique) 
+  {
+    $row = $mysqli->fetch_assoc($res);
+    extract($row);
+    $caption = "Manage VRRP Synchronization Group $name";
+  }
+  else
+  {
+    $caption = "Manage VRRP Synchronization Groups";
+  }
+?>
+  
+  <table class="bordered sorttable">
+  
+    <caption><?php echo $caption ?></caption>
+    <thead>
+    <tr>
+      <th>Name</th>
+      <th>VRRP instances</th>
+      <th>Notify master</th>
+      <th>Notify backup</th>
+      <th>Notify fault</th>
+      <th>Notify</th>
+      <th>SMTP alert</th>
+      <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+<?php
+
+  $cpt = 0;
+  $res->data_seek(0);
+
+  while ( $row = $res->fetch_assoc() )
+  {
+    extract($row);
+    
+?>
+    <tr>
+      <td><?php echo $name ?></td>      
+      <td><?php echo @$vrrp_instances?$vrrp_instances:"-" ?></td>      
+      <td><?php echo $notify_master?$notify_master:"-" ?></td>
+      <td><?php echo $notify_backup?$notify_backuo:"-" ?></td>
+      <td><?php echo $notify_fault?$notify_fault:"-" ?></td>
+      <td><?php echo $notify?$notify:"-" ?></td>
+      <td><?php echo $smtp_alert?"yes":"no" ?></td>
+      <td>&nbsp;</td>
+      <td>
+        <a href="form_vrrp_sync_group?sync_group_id=<?php echo $sync_group_id ?>" rel=modal:open><img src="icons/plugin_edit.png" title="Edit VRRP Sync Group" /></a>
+        &nbsp;
+        <a href="?action=delete&sync_group_id=<?php echo $sync_group_id ?>"  onclick="return(confirm('Delete VRRP Sync group <?php echo $name ?> ?'));"><img src="icons/plugin_delete.png" title="Delete VRRP instance" /></a>
+      </td>
+    </tr>
+    </tr>
+<?php
+    $cpt ++;
+  }
+?>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="7">&nbsp;</td>
+      <td>
+        <a href="form_vrrp_sync_group.php" rel="modal:open"><img src="icons/plugin_add.png" title="Add VRRP Sync Group" /></a>
+      </td>
+    </tr>
+  </tfoot>
+  </table>
+  
+<?php
+}
 
 /* 
   --------------------------------------------------------------
@@ -978,6 +1082,8 @@ switch($action) {
     }
     break;
 }
+
+table_vrrp_sync_group();
 
 // table_ip_adresses('virtual',1);
 

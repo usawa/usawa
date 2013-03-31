@@ -7,7 +7,8 @@ $vrrp_instance_dictionnary = array ('name', 'use_vmac', 'native_ipv6', 'interfac
               'lvs_sync_daemon_interface', 'garp_master_delay', 'advert_int', 'auth_type', 'auth_pass', 'nopreempt',
               'preempt_delay', 'notify_master', 'notify_backup', 'notify_fault', 'notify_stop', 'notify', 'smtp_alert', 'cluster_id', 'comment');
 $ip_address_dictionnary = array ('ip', 'mask', 'broadcast', 'dev', 'scope', 'label', 'is_gateway', 'is_disabled', 'cluster_id', 'virtual_router_id' );
-              
+$vrrp_sync_group_dictionnary = array ('name', 'notify_master', 'notify_backup', 'notify_fault', 'notify', 'smtp_alert');
+
 function is_connected()
 {
   if(isset($_SESSION['id_user'])) return true;
