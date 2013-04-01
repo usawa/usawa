@@ -50,6 +50,15 @@ function form_server($lb_id = NULL, $cluster_id = NULL)
 
     }
 
+    if ( $cluster_id) 
+    {
+      
+?>
+    <input type="hidden" name="old_cluster_id" value="<?php echo $cluster_id ?>" />    
+<?php
+
+    }
+
 ?>    
     <input type="hidden" name="f_type" value="server" />
 
