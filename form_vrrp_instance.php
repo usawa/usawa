@@ -98,6 +98,7 @@ function form_vrrp_instance($virtual_router_id = NULL)
     if ( $sync_group_id )
     {
 ?>
+      <input type="hidden" name="cluster_id" value="<?php echo $cluster_id ?>" />
       <?php echo $cluster_name ?> (can't be updated, instance already in Sync group)
 <?php
     }
