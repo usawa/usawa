@@ -5,31 +5,34 @@ require_once("include/usawa_base.inc.php");
 function form_vrrp_instance($virtual_router_id = NULL)
 {
   global $mysqli;
-
+  
   if ( $virtual_router_id ) {
   
     $sql = "select 
-              name,
-              use_vmac,
-              native_ipv6,
-              interface,
-              dont_track_primary,
-              inet6_ntoa(mcast_src_ip) as mcast_src_ip, 
-              lvs_sync_daemon_interface,
-              garp_master_delay,
-              advert_int,
-              auth_type,
-              auth_pass,
-              nopreempt,
-              preempt_delay,
-              notify_master,
-              notify_backup,
-              notify_fault,
-              notify,
-              smtp_alert,
-              cluster_id,
-              comment
-            from vrrp_instance
+              v.name,
+              v.use_vmac,
+              v.native_ipv6,
+              v.interface,
+              v.dont_track_primary,
+              inet6_ntoa(v.mcast_src_ip) as mcast_src_ip, 
+              v.lvs_sync_daemon_interface,
+              v.garp_master_delay,
+              v.advert_int,
+              v.auth_type,
+              v.auth_pass,
+              v.nopreempt,
+              v.preempt_delay,
+              v.notify_master,
+              v.notify_backup,
+              v.notify_fault,
+              v.notify,
+              v.smtp_alert,
+              v.cluster_id,
+              v.sync_group_id,
+              v.comment,
+              c.name as cluster_name
+            from vrrp_instance v
+            left join cluster c on v.cluster_id = c.cluster_id
             where virtual_router_id='".$virtual_router_id."'";
     
     if ( ($res = $mysqli->query($sql) ) && $res->num_rows) {
@@ -37,14 +40,21 @@ function form_vrrp_instance($virtual_router_id = NULL)
       extract($row);
     }
   } else {
-    $cluster_id = NULL;
-    $auth_type=VRRP_DEFAULT_AUTH_TYPE;
+    $cluster_id = NULL ;
+    $sync_group_id = NULL ;
+    $auth_type = VRRP_DEFAULT_AUTH_TYPE ;
   }
     
   // Cluster list
   $sql = "select cluster_id, name from cluster where 1";
   $res_cluster = $mysqli->query($sql) ;
 
+  // Sync group
+  if($cluster_id)
+  {
+    $sql = "select sync_group_id, name as sync_group_name from vrrp_sync_group where cluster_id='$cluster_id'";
+    $res_group = $mysqli->query($sql) ;
+  }
 ?>
 
   <form name = "vrrp_instance_form" method="POST">
@@ -52,10 +62,17 @@ function form_vrrp_instance($virtual_router_id = NULL)
     <legend>VRRP Instance</legend>
     <div class="error_box"></div>
     
+<?php   
+    if ( $cluster_id )
+    {
+?>
+    <input type="hidden" name="old_cluster_id" value="<?php echo $cluster_id ?>" />
+  
 <?php
+    }
+    
     if ( $virtual_router_id ) 
     {
-      
 ?>
     <input type="hidden" name="action" value="update" />
 <?php
@@ -74,21 +91,52 @@ function form_vrrp_instance($virtual_router_id = NULL)
     
     <div><label for="name">Name</label> <input type="text" maxlength="255" name="name" value="<?php echo @$name?$name:"" ?>" /></div>
 
+<!-- Cluster id -->    
     <div>
       <label for="cluster_id">Cluster</label> 
+<?php
+    if ( $sync_group_id )
+    {
+?>
+      <?php echo $cluster_name ?> (can't be updated, instance already in Sync group)
+<?php
+    }
+    else
+    {
+?>
       <select name="cluster_id">
         <option value="">---</option>
 <?php
-    while ( $row = $res_cluster->fetch_assoc() )
-    {
+      while ( $row = $res_cluster->fetch_assoc() )
+      {
 ?>
         <option value="<?php echo $row['cluster_id'] ?>" <?php if ( $cluster_id == $row['cluster_id'] ) echo 'selected="selected"' ?>><?php echo $row['name'] ?></option>
 <?php
+      }
     }
 ?>
       </select>
     </div>
 
+<!-- vrrp instance -->    
+    <div>
+      <label for="sync_group_id">Sync Group</label> 
+      <select name="sync_group_id">
+        <option value="">---</option>
+<?php
+    if($cluster_id)
+    {
+      while ( $row = $res_group->fetch_assoc() )
+      {
+?>
+        <option value="<?php echo $row['sync_group_id'] ?>" <?php if ( $sync_group_id == $row['sync_group_id'] ) echo 'selected="selected"' ?>><?php echo $row['sync_group_name'] ?></option>
+<?php
+      }
+    }
+?>
+      </select>
+    </div>
+    
     <div><label for="interface">Interface</label> <input type="text" maxlength="255" name="interface" value="<?php echo @$interface?$interface:"" ?>" /></div>
 
     <div><label for="advert_int">Advert interval</label> <input type="text" maxlength="3" name="advert_int" value="<?php echo @$advert_int?$advert_int:VRRP_DEFAULT_ADVERT_INT ?>" /></div>
@@ -101,43 +149,8 @@ function form_vrrp_instance($virtual_router_id = NULL)
 
     <div id="auth" <?php echo (@$auth_type!="PASS")?'style="display:none"':"" ?>><label for="auth_pass">Pass Phrase</label> <input type="text" maxlength="8" name="auth_pass" value="<?php echo @$auth_path?$auth_pass:"VRRPass" ?>" /></div>
 
-<?php
-    if ( $cluster_id)
-    {
-      $sql = "select s.lb_id, s.name as server_name, state, priority from vrrp_instance v 
-          left join server s on v.cluster_id = s.cluster_id 
-          left join vrrp_details_per_server d on s.lb_id = d.lb_id 
-          where v.virtual_router_id='$virtual_router_id'";
-
-      $res = $mysqli->query($sql);
-      $cpt_server = 0;
-      while ( $row = $res->fetch_assoc() )
-      {
-        if($cpt_server == 0)
-        {
-?>
-    <hr />
-<?php
-        }
-        $cpt_server++;
-        extract($row);
-        
-?>        
-    <div>
-      <label><?php echo $server_name; ?> Prio.</label>
-      <input type="text" style="width:3em; display:inline" name="priority[<?php echo $lb_id ?>]" maxlength="3" value="<?php echo $priority?$priority:VRRP_DEFAULT_PRIORITY ?>" />
-      <input type="radio" name="state[<?php echo $lb_id ?>]" value="MASTER" <?php echo (@$state=="MASTER")?'checked="checked"':"" ?>/>MASTER
-      <input type="radio" name="state[<?php echo $lb_id ?>]" value="BACKUP" <?php echo (!@$state||$state=="BACKUP")?'checked="checked"':"" ?>/>BACKUP
-    </div>
-
-<?php
-      }
-    }
-
-?>
     <div id="details" style="display:none">
 
-    <hr />
     <div><label for="lvs_sync_daemon_interface">LVS Sync Interface</label> <input type="text" maxlength="255" name="lvs_sync_daemon_interface" value="<?php echo @$lvs_sync_daemon_interface?$lvs_sync_daemon_interface:"" ?>" /></div>
 
     <div><label for="mcast_src_ip">Multicast Source IP</label> <input type="text" maxlength="255" name="mcast_src_ip" value="<?php echo @$mcast_src_ip?$mcast_src_ip:"" ?>" /></div>
@@ -197,7 +210,7 @@ var validator = new FormValidator('vrrp_instance_form', [{
     }, {
     name: 'virtual_router_id',
     display: 'Virtual Router Id',
-    rules: 'integer|greater_than[-1]|less_than[256]'
+    rules: 'required|integer|greater_than[-1]|less_than[256]'
 }, {
     name: 'interface',
     display: 'Interface',

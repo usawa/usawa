@@ -397,7 +397,9 @@ function update_vrrp_instance()
   global $vrrp_instance_dictionnary;
   global $error_code;
   
-  $unquoted_cluster_id=@$_POST['cluster_id'];
+  $state = false ; 
+  $new_cluster_id=@$_POST['cluster_id'];
+  $old_cluster_id=@$_POST['old_cluster_id'];
   
   /* echo "<pre>";
   print_r($_POST);
@@ -435,6 +437,7 @@ function update_vrrp_instance()
             notify=$notify,
             smtp_alert=$smtp_alert,
             cluster_id=$cluster_id,
+            sync_group_id=$sync_group_id,
             comment=$comment
            where virtual_router_id='$virtual_router_id'
             ";
@@ -468,6 +471,7 @@ function update_vrrp_instance()
               notify,
               smtp_alert,
               cluster_id,
+              sync_group_id,
               comment)
             values ( 
               $virtual_router_id,
@@ -490,6 +494,7 @@ function update_vrrp_instance()
               $notify,
               $smtp_alert,
               $cluster_id,
+              $sync_group_id,
               $comment
             )";
     
@@ -506,10 +511,18 @@ function update_vrrp_instance()
         
   }
 
-  // Pas génial ici : meger les deux blocs,insert si absent, update sinon
+  
+  // Change cluster ? Delete old details entries
+  if( $old_cluster_id && ($old_cluster_id != $new_cluster_id) )
+  {
+    $sql = "delete from vrrp_details_per_server where lb_id in (
+              select lb_id in server where cluster_id='$old_cluster_id')";
+    $mysqli->query($sql);
+      
+  }
   
   // Update VRRP<->Servers state/prio
-  if ( $unquoted_cluster_id )
+  if ( $new_cluster_id )
   {
     $sql = "select lb_id from server where cluster_id=$cluster_id";
     $res = $mysqli->query($sql);
@@ -520,22 +533,6 @@ function update_vrrp_instance()
               (lb_id,virtual_router_id)
               values ('$lb_id','$virtual_router_id')";
       $mysqli->query($sql);
-    }
-  }
-
-  // state/priority arrays : update vrrp details per server
-  if($state)
-  {
-    foreach($state as $lb_id => $initial_state)
-    {
-      $initial_priority=$priority[$lb_id];
-      $sql = "insert into vrrp_details_per_server 
-                (lb_id,virtual_router_id,state,priority)
-                values( '$lb_id', '$virtual_router_id', '$initial_state', '$initial_priority' )
-                on duplicate key update state='$initial_state', priority='$initial_priority'";
-  
-      $mysqli->query($sql);      
-      
     }
   }
 
@@ -574,10 +571,13 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
               v.smtp_alert,
               v.cluster_id,
               v.comment,
+              v.sync_group_id,
+              s.name as sync_group_name,
               c.name as cluster_name
         from  vrrp_instance v
-        left join cluster c
-        on c.cluster_id=v.cluster_id ";
+        left join cluster c on c.cluster_id=v.cluster_id
+        left join vrrp_sync_group s on v.sync_group_id = s.sync_group_id
+        ";
   if ($cluster_id) 
   {
     $sql .= "where v.cluster_id='$cluster_id' ";
@@ -606,6 +606,7 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
       <th>Advert Int.</th>
       <th>Auth.</th>
       <th>Cluster</th>
+      <th>Sync Group</th>
       <th>Virt. IPs.</th>
       <th>Virt. Routes</th>
       <th>Action</th>
@@ -636,16 +637,19 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
       <td><?php echo $interface ?></td>
       <td><?php echo $advert_int?$advert_int:"-" ?></td>
       <td><?php echo $auth_type ?></td>
-      <td><?php echo $cluster_name?$cluster_name:"-" ?></td>      
+      <td><?php echo $cluster_name?$cluster_name:"-" ?></td>
+      <td><?php echo $sync_group_name?$sync_group_name:"-" ?></td>
       <td><?php echo $ip_count ?></td>
       <td><?php echo $route_count ?></td>
       <td>
-        <a href="form_vrrp_instance.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel=modal:open><img src="icons/brick_edit.png" title="Sdit VRRP instance" /></a>
+        <a href="form_vrrp_instance.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/brick_edit.png" title="Sdit VRRP instance" /></a>
         &nbsp;
         <a href="?action=delete&virtual_router_id=<?php echo $virtual_router_id ?>"  onclick="return(confirm('Delete VRRP instance <?php echo $name ?> ?'));"><img src="icons/brick_delete.png" title="Delete VRRP instance" /></a>
         &nbsp;
-        <a href="?action=edit_ip&virtual_router_id=<?php echo $virtual_router_id ?>"><img src="icons/network_ip.png" title="Virtual IP addresses" /></a>
-      </td>
+        <a href="form_vrrp_details_per_server.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/computer_link.png" title="Edit nodes priorities" /></a>
+        &nbsp;
+        <a href="?action=edit_ip&virtual_router_id=<?php echo $virtual_router_id ?>"><img src="icons/network_ip.png" title="Virtual IP addresses" /></a>        
+        </td>
     </tr>
 <?php
     if ( $cluster_id)
@@ -655,14 +659,15 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
       $sql = "select s.lb_id, s.name as server_name, state, priority from vrrp_instance v 
           left join server s on v.cluster_id = s.cluster_id 
           left join vrrp_details_per_server d on s.lb_id = d.lb_id 
-          where v.virtual_router_id='$virtual_router_id'";
+          where v.virtual_router_id='$virtual_router_id'
+          group by s.lb_id";
 
       $res_servers = $mysqli->query($sql);
       if ($res_servers && $mysqli->affected_rows) 
       {
 ?>
     <tr style="display:none" id="server<?php echo $cpt ?>" >
-      <td colspan="9">
+      <td colspan="10">
     <table class="subtable">
 <?php
         while ( $row = $res_servers->fetch_assoc() )
@@ -674,7 +679,7 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
       <tr>   
       <td style="font-weight:bold">Server</td><td><?php echo $server_name; ?></td>
       <td style="font-weight:bold">State</td><td><?php echo $state?$state:"---"; ?></td>
-      <td style="font-weight:bold">Priority</td><td><?php echo $priority?$priority:"---"; ?></td>
+      <td style="font-weight:bold">Priority</td><td><?php echo !is_null($priority)?$priority:"---"; ?></td>
       <td style="width:70%">&nbsp;</td>
       </tr>
 <?php
@@ -695,7 +700,7 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
   </tbody>
   <tfoot>
     <tr>
-      <td colspan="8">&nbsp;</td>
+      <td colspan="9">&nbsp;</td>
       <td>
         <a href="form_vrrp_instance.php" rel="modal:open"><img src="icons/brick_add.png" title="add VRRP Instance" /></a>
       </td>
@@ -727,27 +732,114 @@ function delete_vrrp_instance($virtual_router_id = NULL)
     VRRP Sync group functions
   --------------------------------------------------------------
 */
-function table_vrrp_sync_group($sync_group_id = NULL)
+function update_vrrp_sync_group()
+{
+  global $mysqli;
+  global $vrrp_sync_group_dictionnary;
+  global $error_code;
+  
+  $state = false ; 
+  $unquoted_sync_group_id=@$_POST['sync_group_id'];
+  
+  /* echo "<pre>";
+  print_r($_POST);
+  echo "</pre>"; */
+  
+  build_default_fields($vrrp_sync_group_dictionnary);
+ 
+  extract($_POST);
+
+  if ( $action == "update" ) 
+  {
+
+    $sql = "update vrrp_sync_group set 
+            name=$name,
+            notify_master=$notify_master,
+            notify_backup=$notify_backup,
+            notify_fault=$notify_fault,
+            notify=$notify,
+            smtp_alert=$smtp_alert,
+            cluster_id=$cluster_id
+           where sync_group_id='$sync_group_id'
+            ";
+    if (! $mysqli->query($sql) )
+    {
+      echo "<br />".$sql."<br />";
+      echo $mysqli->error;
+      $error_code = true;
+    }
+
+  }          
+  else
+  {
+    $sql = "insert into vrrp_sync_group (
+              name,
+              notify_master,
+              notify_backup,
+              notify_fault,
+              notify,
+              smtp_alert,
+              cluster_id
+            )
+            values ( 
+              $name,
+              $notify_master,
+              $notify_backup,
+              $notify_fault,
+              $notify,
+              $smtp_alert,
+              $cluster_id
+            )";
+    
+    if (! $mysqli->query($sql) )
+    {
+      echo "<br />".$sql."<br />";
+      echo $mysqli->error;
+      $error_code = true;
+    }
+    else
+    {
+      $sync_group_id = $mysqli->insert_id;
+    }
+        
+  }
+
+  if (! $error_code ) 
+  {
+    // redirect_to("?virtual_router_id=".$virtual_router_id);
+    redirect_to($_SERVER['HTTP_REFERER']);
+  }
+  
+}
+
+function table_vrrp_sync_group($cluster_id = NULL)
 {
   global $mysqli;
 
   $vrrp_sync_group_dictionnary = array ('name', 'notify_master', 'notify_backup', 'notify_fault', 'notify', 'smtp_alert');
   
   $unique = false;
-  
-  $sql = "select
-              name,
-              notify_master,
-              notify_backup,
-              notify_fault,
-              notify,
-              smtp_alert
-        from  vrrp_sync_group ";
-  if (! is_null($sync_group_id) ) 
+
+  $sql="SELECT 
+          s.sync_group_id, 
+          GROUP_CONCAT( v.name SEPARATOR  ',' ) AS vrrp_instances,
+          c.name as cluster_name,
+          s.name, 
+          s.notify_master, 
+          s.notify_backup, 
+          s.notify_fault, 
+          s.notify, 
+          s.smtp_alert
+        FROM vrrp_sync_group s
+        LEFT JOIN vrrp_instance v ON v.sync_group_id=s.sync_group_id 
+        LEFT JOIN cluster c on c.cluster_id=s.cluster_id ";
+  if (! is_null($cluster_id) ) 
   {
-    $sql .= "where sync_group_id='$sync_group_id'";
+    $sql .= "where s.cluster_id='$cluster_id' ";
     $unique = true ; 
   }
+
+  $sql .= "GROUP BY s.sync_group_id";
 
   $res = $mysqli->query($sql);
   if( ! $res ) {
@@ -757,9 +849,9 @@ function table_vrrp_sync_group($sync_group_id = NULL)
 
   if($unique) 
   {
-    $row = $mysqli->fetch_assoc($res);
+    $row = $res->fetch_assoc();
     extract($row);
-    $caption = "Manage VRRP Synchronization Group $name";
+    $caption = "Manage VRRP Synchronization Groups for $cluster_name";
   }
   else
   {
@@ -773,6 +865,7 @@ function table_vrrp_sync_group($sync_group_id = NULL)
     <thead>
     <tr>
       <th>Name</th>
+      <th>Cluster</th>
       <th>VRRP instances</th>
       <th>Notify master</th>
       <th>Notify backup</th>
@@ -795,15 +888,15 @@ function table_vrrp_sync_group($sync_group_id = NULL)
 ?>
     <tr>
       <td><?php echo $name ?></td>      
+      <td><?php echo $cluster_name?$cluster_name:"-" ?></td>
       <td><?php echo @$vrrp_instances?$vrrp_instances:"-" ?></td>      
       <td><?php echo $notify_master?$notify_master:"-" ?></td>
       <td><?php echo $notify_backup?$notify_backuo:"-" ?></td>
       <td><?php echo $notify_fault?$notify_fault:"-" ?></td>
       <td><?php echo $notify?$notify:"-" ?></td>
       <td><?php echo $smtp_alert?"yes":"no" ?></td>
-      <td>&nbsp;</td>
       <td>
-        <a href="form_vrrp_sync_group?sync_group_id=<?php echo $sync_group_id ?>" rel=modal:open><img src="icons/plugin_edit.png" title="Edit VRRP Sync Group" /></a>
+        <a href="form_vrrp_sync_group.php?sync_group_id=<?php echo $sync_group_id ?>" rel="modal:open"><img src="icons/plugin_edit.png" title="Edit VRRP Sync Group" /></a>
         &nbsp;
         <a href="?action=delete&sync_group_id=<?php echo $sync_group_id ?>"  onclick="return(confirm('Delete VRRP Sync group <?php echo $name ?> ?'));"><img src="icons/plugin_delete.png" title="Delete VRRP instance" /></a>
       </td>
@@ -816,7 +909,7 @@ function table_vrrp_sync_group($sync_group_id = NULL)
   </tbody>
   <tfoot>
     <tr>
-      <td colspan="7">&nbsp;</td>
+      <td colspan="8">&nbsp;</td>
       <td>
         <a href="form_vrrp_sync_group.php" rel="modal:open"><img src="icons/plugin_add.png" title="Add VRRP Sync Group" /></a>
       </td>
@@ -825,6 +918,56 @@ function table_vrrp_sync_group($sync_group_id = NULL)
   </table>
   
 <?php
+}
+
+function delete_vrrp_sync_group($sync_group_id = NULL)
+{
+  global $mysqli;
+    
+  if ($sync_group_id) 
+  {
+
+    $sql = "delete from vrrp_sync_group
+          where sync_group_id='$sync_group_id'";
+    $res = $mysqli->query($sql);
+    
+  }
+  
+  redirect_to($_SERVER['HTTP_REFERER']);
+}
+
+/* 
+  --------------------------------------------------------------
+    IP / Routes functions
+  --------------------------------------------------------------
+*/
+function update_vrrp_details_per_server()
+{
+  global $mysqli;
+  
+  extract($_POST);
+  
+  // state/priority arrays : update vrrp details per server
+  if($state)
+  {
+    foreach($state as $lb_id => $initial_state)
+    {
+      $initial_priority=$priority[$lb_id];
+      
+      // Initial priority 0-255
+      $initial_priority = min($initial_priority,255) ;
+      $initial_priority = max($initial_priority,0);
+      
+      $sql = "insert into vrrp_details_per_server 
+                (lb_id,virtual_router_id,state,priority)
+                values( '$lb_id', '$virtual_router_id', '$initial_state', '$initial_priority' )
+                on duplicate key update state='$initial_state', priority='$initial_priority'";
+  
+      $mysqli->query($sql);      
+      
+    }
+  }
+  redirect_to($_SERVER['HTTP_REFERER']);
 }
 
 /* 
@@ -1005,6 +1148,7 @@ if(isset( $_REQUEST['cluster_id'] ) ) $cluster_id = $_REQUEST['cluster_id']; els
 if(isset( $_REQUEST['lb_id'] ) ) $lb_id = $_REQUEST['lb_id']; else $lb_id= NULL;
 if(isset( $_REQUEST['ip'] ) ) $ip = $_REQUEST['ip']; else $ip = NULL;
 if(isset( $_REQUEST['virtual_router_id'] ) ) $virtual_router_id = $_REQUEST['virtual_router_id']; else $virtual_router_id= NULL;
+if(isset( $_REQUEST['sync_group_id'] ) ) $sync_group_id = $_REQUEST['sync_group_id']; else $sync_group_id = NULL;
 
 
 switch($action) {
@@ -1024,6 +1168,14 @@ switch($action) {
         update_vrrp_instance();
         break;
         
+      case "vrrp_sync_group":
+        update_vrrp_sync_group();
+        break;
+       
+      case "vrrp_details_per_server":
+        update_vrrp_details_per_server();
+        break;
+        
       case "ip_address":
         update_ip_address();
         break;
@@ -1035,6 +1187,7 @@ switch($action) {
     if($lb_id) delete_server($lb_id);
     if($virtual_router_id) delete_vrrp_instance($virtual_router_id);
     if($ip) delete_ip_address($ip);
+    if($sync_group_id) delete_vrrp_sync_group($sync_group_id);
     break;
   
 }
@@ -1069,6 +1222,7 @@ switch($action) {
     break;
   case "vrrp_instances":
     table_vrrp_instance();
+    table_vrrp_sync_group();
     break;
   default:
     if($cluster_id)
@@ -1077,13 +1231,14 @@ switch($action) {
       table_cluster($cluster_id);
       table_server($cluster_id);
       table_vrrp_instance($cluster_id);
+      table_vrrp_sync_group($cluster_id);
+
     } else {
       table_cluster();
     }
     break;
 }
 
-table_vrrp_sync_group();
 
 // table_ip_adresses('virtual',1);
 
