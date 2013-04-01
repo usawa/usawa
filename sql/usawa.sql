@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost:3306
--- Généré le: Sam 30 Mars 2013 à 21:03
+-- Généré le: Lun 01 Avril 2013 à 20:10
 -- Version du serveur: 5.6.10
 -- Version de PHP: 5.4.12
 
@@ -266,8 +266,10 @@ CREATE TABLE IF NOT EXISTS `vrrp_sync_group` (
   `notify_fault` varchar(255) DEFAULT NULL COMMENT 'Script to run during FAULT transit',
   `notify` varchar(255) DEFAULT NULL COMMENT 'Script to run during ANY state transit',
   `smtp_alert` tinyint(1) DEFAULT NULL COMMENT 'Send email notif during state transit',
-  PRIMARY KEY (`sync_group_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='VRRP Sync group' AUTO_INCREMENT=1 ;
+  `cluster_id` smallint(5) unsigned DEFAULT NULL,
+  PRIMARY KEY (`sync_group_id`),
+  KEY `cluster_id` (`cluster_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='VRRP Sync group' AUTO_INCREMENT=4 ;
 
 --
 -- Contraintes pour les tables exportées
@@ -284,8 +286,8 @@ ALTER TABLE `ip_address`
 -- Contraintes pour la table `route`
 --
 ALTER TABLE `route`
-  ADD CONSTRAINT `route_ibfk_2` FOREIGN KEY (`virtual_router_id`) REFERENCES `vrrp_instance` (`virtual_router_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `route_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `cluster` (`cluster_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `route_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `cluster` (`cluster_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `route_ibfk_2` FOREIGN KEY (`virtual_router_id`) REFERENCES `vrrp_instance` (`virtual_router_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Contraintes pour la table `server`
@@ -317,8 +319,14 @@ ALTER TABLE `vrrp_details_per_server`
 -- Contraintes pour la table `vrrp_instance`
 --
 ALTER TABLE `vrrp_instance`
-  ADD CONSTRAINT `vrrp_instance_ibfk_2` FOREIGN KEY (`sync_group_id`) REFERENCES `vrrp_instance` (`sync_group_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `vrrp_instance_ibfk_2` FOREIGN KEY (`sync_group_id`) REFERENCES `vrrp_sync_group` (`sync_group_id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `vrrp_instance_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `cluster` (`cluster_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Contraintes pour la table `vrrp_sync_group`
+--
+ALTER TABLE `vrrp_sync_group`
+  ADD CONSTRAINT `vrrp_sync_group_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `cluster` (`cluster_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
