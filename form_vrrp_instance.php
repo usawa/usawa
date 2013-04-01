@@ -70,6 +70,14 @@ function form_vrrp_instance($virtual_router_id = NULL)
   
 <?php
     }
+
+    if ( $sync_group_id )
+    {
+?>
+    <input type="hidden" name="old_sync_group_id" value="<?php echo $sync_group_id ?>" />
+  
+<?php
+    }
     
     if ( $virtual_router_id ) 
     {

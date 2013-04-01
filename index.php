@@ -400,6 +400,7 @@ function update_vrrp_instance()
   $state = false ; 
   $new_cluster_id=@$_POST['cluster_id'];
   $old_cluster_id=@$_POST['old_cluster_id'];
+  $old_sync_group_id=@$_POST['old_sync_group_id'];
   
   /* echo "<pre>";
   print_r($_POST);
@@ -519,21 +520,6 @@ function update_vrrp_instance()
               select lb_id in server where cluster_id='$old_cluster_id')";
     $mysqli->query($sql);
       
-  }
-  
-  // Update VRRP<->Servers state/prio
-  if ( $new_cluster_id )
-  {
-    $sql = "select lb_id from server where cluster_id=$cluster_id";
-    $res = $mysqli->query($sql);
-    while ( $row = $res->fetch_assoc() )
-    {
-      extract($row);
-      $sql = "insert ignore into vrrp_details_per_server
-              (lb_id,virtual_router_id)
-              values ('$lb_id','$virtual_router_id')";
-      $mysqli->query($sql);
-    }
   }
 
   if (! $error_code ) 
@@ -819,11 +805,22 @@ function table_vrrp_sync_group($cluster_id = NULL)
   $vrrp_sync_group_dictionnary = array ('name', 'notify_master', 'notify_backup', 'notify_fault', 'notify', 'smtp_alert');
   
   $unique = false;
+  $cluster_name = NULL ;
+  
+  if (! is_null($cluster_id) ) 
+  {
+
+    $sql = "select 
+            name as cluster_name
+          from cluster
+          where cluster_id='$cluster_id'";
+    $res = $mysqli->query($sql);
+    list($cluster_name) = $res->fetch_array();
+  }
 
   $sql="SELECT 
           s.sync_group_id, 
           GROUP_CONCAT( v.name SEPARATOR  ',' ) AS vrrp_instances,
-          c.name as cluster_name,
           s.name, 
           s.notify_master, 
           s.notify_backup, 
@@ -831,8 +828,7 @@ function table_vrrp_sync_group($cluster_id = NULL)
           s.notify, 
           s.smtp_alert
         FROM vrrp_sync_group s
-        LEFT JOIN vrrp_instance v ON v.sync_group_id=s.sync_group_id 
-        LEFT JOIN cluster c on c.cluster_id=s.cluster_id ";
+        LEFT JOIN vrrp_instance v ON v.sync_group_id=s.sync_group_id ";
   if (! is_null($cluster_id) ) 
   {
     $sql .= "where s.cluster_id='$cluster_id' ";
@@ -847,10 +843,8 @@ function table_vrrp_sync_group($cluster_id = NULL)
     exit;
   }
 
-  if($unique) 
+  if($cluster_name) 
   {
-    $row = $res->fetch_assoc();
-    extract($row);
     $caption = "Manage VRRP Synchronization Groups for $cluster_name";
   }
   else
@@ -911,7 +905,7 @@ function table_vrrp_sync_group($cluster_id = NULL)
     <tr>
       <td colspan="8">&nbsp;</td>
       <td>
-        <a href="form_vrrp_sync_group.php" rel="modal:open"><img src="icons/plugin_add.png" title="Add VRRP Sync Group" /></a>
+        <a href="form_vrrp_sync_group.php<?php echo $cluster_id?"?cluster_id=$cluster_id":"" ?>" rel="modal:open"><img src="icons/plugin_add.png" title="Add VRRP Sync Group" /></a>
       </td>
     </tr>
   </tfoot>
