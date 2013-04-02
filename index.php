@@ -184,6 +184,7 @@ function update_server()
   // create a cluster based on server
   $new_cluster_id = NULL;
   $old_cluster_id=@$_POST['old_cluster_id'];
+  $create_cluster = NULL;
   
   extract($_POST);
   
@@ -224,6 +225,7 @@ function update_server()
               conf_path=$conf_path
               where lb_id='$lb_id'
               ";
+              
     if (! $mysqli->query($sql) ) 
     {
       echo $mysqli->error;
@@ -261,14 +263,6 @@ function update_server()
   }
 
   $cluster_id = str_replace("'",'',$cluster_id);
-  
-  // Change cluster ? Delete old details entries
-  if( $old_cluster_id && ($old_cluster_id != $cluster_id) )
-  {
-    $sql = "delete from vrrp_details_per_server where lb_id='$lb_id'";
-    $mysqli->query($sql);
-      
-  }
 
   redirect_to($_SERVER['HTTP_REFERER']);
 }
@@ -498,16 +492,6 @@ function update_vrrp_instance()
       $virtual_router_id = $mysqli->insert_id;
     }
         
-  }
-
-  
-  // Change cluster ? Delete old details entries
-  if( $old_cluster_id && ($old_cluster_id != $new_cluster_id) )
-  {
-    $sql = "delete from vrrp_details_per_server where lb_id in (
-              select lb_id in server where cluster_id='$old_cluster_id')";
-    $mysqli->query($sql);
-      
   }
 
   if (! $error_code ) 

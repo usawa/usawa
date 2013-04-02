@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost:3306
--- Généré le: Lun 01 Avril 2013 à 20:10
+-- Généré le: Mar 02 Avril 2013 à 19:28
 -- Version du serveur: 5.6.10
 -- Version de PHP: 5.4.12
 
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `cluster` (
   `last_updated` datetime DEFAULT NULL,
   PRIMARY KEY (`cluster_id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='List of clusters' AUTO_INCREMENT=18 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='List of clusters' AUTO_INCREMENT=10 ;
 
 -- --------------------------------------------------------
 
@@ -133,6 +133,20 @@ CREATE TABLE IF NOT EXISTS `server` (
   UNIQUE KEY `name` (`name`),
   KEY `cluster_id` (`cluster_id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='List of all load balancers' AUTO_INCREMENT=22 ;
+
+--
+-- Déclencheurs `server`
+--
+DROP TRIGGER IF EXISTS `server_after_update`;
+DELIMITER //
+CREATE TRIGGER `server_after_update` AFTER UPDATE ON `server`
+ FOR EACH ROW BEGIN
+IF NEW.cluster_id IS NULL or (NEW.cluster_id != OLD.cluster_id) THEN
+	DELETE FROM vrrp_details_per_server where lb_id=NEW.lb_id;
+END IF;
+END
+//
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -234,6 +248,21 @@ CREATE TABLE IF NOT EXISTS `vrrp_instance` (
   KEY `sync_group_id_2` (`sync_group_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Contains all vrrp instances';
 
+--
+-- Déclencheurs `vrrp_instance`
+--
+DROP TRIGGER IF EXISTS `vrrp_instance_after_update`;
+DELIMITER //
+CREATE TRIGGER `vrrp_instance_after_update` AFTER UPDATE ON `vrrp_instance`
+ FOR EACH ROW BEGIN
+IF NEW.cluster_id IS NULL or (NEW.cluster_id != OLD.cluster_id) THEN
+	DELETE FROM vrrp_details_per_server where lb_id in (
+        select lb_id from server where cluster_id=OLD.cluster_id);
+END IF;
+END
+//
+DELIMITER ;
+
 -- --------------------------------------------------------
 
 --
@@ -269,7 +298,7 @@ CREATE TABLE IF NOT EXISTS `vrrp_sync_group` (
   `cluster_id` smallint(5) unsigned DEFAULT NULL,
   PRIMARY KEY (`sync_group_id`),
   KEY `cluster_id` (`cluster_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='VRRP Sync group' AUTO_INCREMENT=4 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='VRRP Sync group' AUTO_INCREMENT=5 ;
 
 --
 -- Contraintes pour les tables exportées
@@ -319,8 +348,8 @@ ALTER TABLE `vrrp_details_per_server`
 -- Contraintes pour la table `vrrp_instance`
 --
 ALTER TABLE `vrrp_instance`
-  ADD CONSTRAINT `vrrp_instance_ibfk_2` FOREIGN KEY (`sync_group_id`) REFERENCES `vrrp_sync_group` (`sync_group_id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `vrrp_instance_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `cluster` (`cluster_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+  ADD CONSTRAINT `vrrp_instance_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `cluster` (`cluster_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `vrrp_instance_ibfk_2` FOREIGN KEY (`sync_group_id`) REFERENCES `vrrp_sync_group` (`sync_group_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Contraintes pour la table `vrrp_sync_group`
