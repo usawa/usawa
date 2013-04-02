@@ -8,18 +8,22 @@ function form_vrrp_details_per_server($virtual_router_id = NULL)
   
   if ( $virtual_router_id ) {
   
-    $sql = "select 
-              v.name as vrrp_name, 
-              s.lb_id, 
-              s.name as server_name, 
-              state, 
-              priority 
-            from 
-              vrrp_instance v
-            left join server s on v.cluster_id = s.cluster_id 
-            left join vrrp_details_per_server d on s.lb_id = d.lb_id 
-            where v.virtual_router_id='$virtual_router_id'
-            group by s.lb_id";
+     $sql = "select 
+                lb_id, 
+                vrrp_name, 
+                name as server_name, 
+                state,
+                priority 
+              from 
+                (select 
+                      s.name, 
+                      v.name as vrrp_name, 
+                      v.virtual_router_id, 
+                      s.lb_id 
+                  from server s, vrrp_instance v
+                  where s.cluster_id = v.cluster_id and v.virtual_router_id='$virtual_router_id') as tmp_ids
+
+              left join vrrp_details_per_server using(virtual_router_id,lb_id)";
 
     if ( ($res = $mysqli->query($sql) ) && $res->num_rows) {
       $row = $res->fetch_assoc();
