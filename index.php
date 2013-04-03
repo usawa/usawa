@@ -43,9 +43,11 @@ function table_cluster($cluster_id = NULL)
 
   $row = $res->fetch_assoc();
   extract($row);
-?>
+?>  
+
+  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_cluster').slideToggle()">Manage cluster <?php echo $unique?$name:"" ?></h3>
+  <div id="t_cluster">
   <table class="bordered sorttable">
-    <caption>Manage cluster <?php echo $unique?$name:"" ?></caption>
     <thead>
     <tr>
       <th>Name</th>
@@ -101,7 +103,7 @@ function table_cluster($cluster_id = NULL)
     </tr>
   </tfoot>
   </table>
-  
+  </div>
 <?php
 }
 
@@ -295,8 +297,9 @@ function table_server($cluster_id = NULL)
   if( ! $res ) echo $mysqli->error;
 
 ?>
+  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_server').slideToggle()">Manage servers</h3>
+  <div id="t_server">
   <table class="bordered sorttable">
-    <caption>Manage servers</caption>
     <thead>
     <tr>
       <th>Name</th>
@@ -347,7 +350,7 @@ function table_server($cluster_id = NULL)
     </tr>
   </tfoot>
   </table>
-  
+  </div>
 <?php
 }
 
@@ -553,9 +556,9 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
     echo $mysqli->error;
   }
 ?>
-  
+  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_vrrp_instance').slideToggle()">Manage VRRP Instances</h3>
+  <div id="t_vrrp_instance">
   <table class="bordered sorttable">
-    <caption>Manage VRRP Instances</caption>
     <thead>
     <tr>
       <th>VRRP Id.</th>
@@ -614,9 +617,17 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
     {
 ?>
 <?php
-      $sql = "select name as server_name, state,priority from (select s.name, v.virtual_router_id, s.lb_id from server s, vrrp_instance v
-where s.cluster_id = v.cluster_id and v.virtual_router_id='$virtual_router_id') as tmp_ids
-left join vrrp_details_per_server using(virtual_router_id,lb_id)";
+      $sql = "select 
+                name as server_name, 
+                state,priority 
+              from 
+                (select 
+                  s.name, 
+                  v.virtual_router_id, 
+                  s.lb_id 
+                 from server s, vrrp_instance v
+                 where s.cluster_id = v.cluster_id and v.virtual_router_id='$virtual_router_id') as tmp_ids
+              left join vrrp_details_per_server using(virtual_router_id,lb_id)";
 
       $res_servers = $mysqli->query($sql);
       if ($res_servers && $mysqli->affected_rows) 
@@ -663,7 +674,7 @@ left join vrrp_details_per_server using(virtual_router_id,lb_id)";
     </tr>
   </tfoot>
   </table>
-  
+  </div>
 <?php
 }
 
@@ -822,10 +833,11 @@ function table_vrrp_sync_group($cluster_id = NULL)
     $caption = "Manage VRRP Synchronization Groups";
   }
 ?>
+
+  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_vrrp_sync').slideToggle()"><?php echo $caption ?></h3>
+  <div id="t_vrrp_sync">
   
   <table class="bordered sorttable">
-  
-    <caption><?php echo $caption ?></caption>
     <thead>
     <tr>
       <th>Name</th>
@@ -880,7 +892,7 @@ function table_vrrp_sync_group($cluster_id = NULL)
     </tr>
   </tfoot>
   </table>
-  
+  </div>
 <?php
 }
 

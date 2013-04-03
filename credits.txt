@@ -6,3 +6,4 @@ JQuery : http://jquery.com/ MIT ot GPL license
 Jquery Modal : by Kyle Fox http://kylefox.ca/projects/ MIT License (GPL Compatible)
 Validate.js : by Rick Harrison http://rickharrison.github.com/validate.js/  MIT License (GPL Compatible)
 sorttable : Stuart Langridge, http://www.kryogenix.org/code/browser/sorttable/ MIT License (GPL Compatible)
+popup : Nicolas Shoeding http://www.nicolashoening.de/?twocents&nr=8 MIT Licence (GPL Compatible)

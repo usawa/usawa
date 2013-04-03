@@ -24,6 +24,7 @@ function page_header($title = NULL)
         <script type="text/javascript" src="jscript/jquery.js"></script>
         <script type="text/javascript" src="jscript/validate.js"></script>
         <script type="text/javascript" src="jscript/sorttable.js"></script>
+        <script type="text/javascript" src="jscript/popup.js"></script>
         
         <script src="jscript/jquery.modal.min.js" type="text/javascript" charset="utf-8"></script>
         <link rel="stylesheet" href="styles/jquery.modal.css" type="text/css" media="screen" />

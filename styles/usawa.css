@@ -158,6 +158,21 @@ body {
         
 }
 
+/* titles */
+h3 {
+    cursor:pointer;
+    font-size:80%;
+    text-align:left;
+    font-weight:bold;
+    padding:8px;
+    margin:2px;
+    margin-top:8px;
+}
+
+h3:before {
+  content:">";
+}
+
 /* tables */
 table {
     *border-collapse: collapse; /* IE7 and lower */
@@ -178,7 +193,7 @@ table {
 }
 
 .bordered caption {
-    font-size:150%;
+    font-size:120%;
     text-align:left;
     font-weight:bold;
     padding:8px;
@@ -480,4 +495,18 @@ table {
   width:400px;
   height:400px;
   z-index:10;
+}
+
+#pup {
+  position:absolute;
+  z-index:200; /* aaaalways on top*/
+  /* modify after this */
+  padding: 3px;
+  margin-left: 10px;
+  margin-top: 5px;
+  width: 250px;
+  border: 1px solid black;
+  background-color: rgba(119 , 119 , 119 , 0.5);
+  color: white;
+  font-size: 80%;
 }
