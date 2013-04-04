@@ -570,6 +570,7 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
       <th>Sync Group</th>
       <th>Virt. IPs.</th>
       <th>Virt. Routes</th>
+      <th>Track Interfaces</th>
       <th>Action</th>
     </tr>
     </thead>
@@ -600,16 +601,25 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
       <td><?php echo $auth_type ?></td>
       <td><?php echo $cluster_name?$cluster_name:"-" ?></td>
       <td><?php echo $sync_group_name?$sync_group_name:"-" ?></td>
-      <td><?php echo $ip_count ?></td>
+      <td>
+        <?php echo $ip_count ?>
+        <a style="float:right" href="?action=edit_ip&virtual_router_id=<?php echo $virtual_router_id ?>"><img src="icons/network_ip.png" title="Virtual IP addresses" /></a>&nbsp;        
+      </td>
       <td><?php echo $route_count ?></td>
+      <td>
+        <?php echo "2" ?>
+        <a style="float:right"href="form_track_interface.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/network_adapter.png" title="Track Interfaces" /></a>
+      </td>
       <td>
         <a href="form_vrrp_instance.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/brick_edit.png" title="Sdit VRRP instance" /></a>
         &nbsp;
         <a href="?action=delete&virtual_router_id=<?php echo $virtual_router_id ?>"  onclick="return(confirm('Delete VRRP instance <?php echo $name ?> ?'));"><img src="icons/brick_delete.png" title="Delete VRRP instance" /></a>
         &nbsp;
         <a href="form_vrrp_details_per_server.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/computer_link.png" title="Edit nodes priorities" /></a>
-        &nbsp;
-        <a href="?action=edit_ip&virtual_router_id=<?php echo $virtual_router_id ?>"><img src="icons/network_ip.png" title="Virtual IP addresses" /></a>        
+<!--         &nbsp; -->
+<!--         <a href="?action=edit_ip&virtual_router_id=<?php echo $virtual_router_id ?>"><img src="icons/network_ip.png" title="Virtual IP addresses" /></a>         -->
+<!--         &nbsp; -->
+<!--         <a href="form_track_interface.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/network_adapter.png" title="Track Interfaces" /></a>         -->
         </td>
     </tr>
 <?php
@@ -634,7 +644,7 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
       {
 ?>
     <tr style="display:none" id="server<?php echo $cpt ?>" >
-      <td colspan="10">
+      <td colspan="11">
     <table class="subtable">
 <?php
         while ( $row = $res_servers->fetch_assoc() )
@@ -667,7 +677,7 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
   </tbody>
   <tfoot>
     <tr>
-      <td colspan="9">&nbsp;</td>
+      <td colspan="10">&nbsp;</td>
       <td>
         <a href="form_vrrp_instance.php" rel="modal:open"><img src="icons/brick_add.png" title="add VRRP Instance" /></a>
       </td>
@@ -948,6 +958,27 @@ function update_vrrp_details_per_server()
 
 /* 
   --------------------------------------------------------------
+    Track functions
+  --------------------------------------------------------------
+*/
+function update_track_interface()
+{
+  global $mysqli;
+  
+  extract($_POST);
+  
+  if(@$track) {
+    foreach($track as $interface => $check)
+    {
+      $t_weight=@$weight[$interface];
+      
+      
+    }
+  }
+}
+
+/* 
+  --------------------------------------------------------------
     IP / Routes functions
   --------------------------------------------------------------
 */
@@ -970,9 +1001,11 @@ function table_ip_adresses($type, $id)
 
   $res = $mysqli->query($sql);
   
-?>  
+?> 
+  <h3>Manage IP addresses</h3>
+  <div id="t_ip">
+
   <table class="bordered sorttable">
-    <caption>Manage IP addresses</caption>
     <thead>
     <tr>
       <th>IP</th>
@@ -1152,6 +1185,10 @@ switch($action) {
         update_vrrp_details_per_server();
         break;
         
+      case "track_interface":
+        update_track_interface();
+        break;
+        
       case "ip_address":
         update_ip_address();
         break;
@@ -1214,7 +1251,6 @@ switch($action) {
     }
     break;
 }
-
 
 // table_ip_adresses('virtual',1);
 

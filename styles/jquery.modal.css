@@ -42,3 +42,32 @@
   -ms-border-radius: 8px;
   border-radius: 8px;
 }
+
+.modal p {
+ border: 1px solid #ccc;
+  border: inset 1px solid #ccc;
+
+  background-color: #dce9f9;
+  background-image: -webkit-gradient(linear, left top, left bottom, from(#ebf3fc), to(#dce9f9));
+  background-image: -webkit-linear-gradient(top, #ebf3fc, #dce9f9);
+  background-image:    -moz-linear-gradient(top, #ebf3fc, #dce9f9);
+  background-image:     -ms-linear-gradient(top, #ebf3fc, #dce9f9);
+  background-image:      -o-linear-gradient(top, #ebf3fc, #dce9f9);
+  background-image:         linear-gradient(top, #ebf3fc, #dce9f9);
+  -webkit-box-shadow: 0 1px 1px #ccc; 
+  -moz-box-shadow: 0 1px 1px #ccc; 
+  box-shadow: 0 1px 1px #ccc;         
+
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  border-radius: 10px;
+
+  margin:auto;
+  position:relative;
+  font: normal 65% "Lucida Grande", Helvetica, Verdana, Arial;
+  line-height: 24px;
+  font-weight: bold;
+  text-decoration: none;
+  padding:10px;
+  z-index:0;
+}
