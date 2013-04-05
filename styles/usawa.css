@@ -105,6 +105,7 @@ box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.3);
         -moz-border-radius:5px;
         -webkit-border-radius:5px;
         border:1px solid #737373;
+        width:320px;
 }
 
 .error_box {

@@ -967,12 +967,35 @@ function update_track_interface()
   
   extract($_POST);
   
-  if(@$track) {
-    foreach($track as $interface => $check)
+  if(@$iface) 
+  {
+    foreach($iface as $interface)
     {
+      $t_check=@$track[$interface];
       $t_weight=@$weight[$interface];
       
+      if (! $t_weight ) $t_weight = 'NULL';
       
+      echo "$interface : $t_check, $t_weight<br />";
+      
+      if($t_check) 
+      {
+        $sql = "insert into track_interface (
+                  virtual_router_id,
+                  interface,
+                  weight)
+                values (
+                  '$virtual_router_id',
+                  '$interface',
+                  $t_weight)
+                on duplicate key update
+                  weight=$t_weight";
+                  echo $sql;
+        $mysqli->query($sql);
+      } else {
+        $sql = "delete from track_interface where virtual_router_id='$virtual_router_id' and interface='$interface'";
+        $mysqli->query($sql);
+      }
     }
   }
 }

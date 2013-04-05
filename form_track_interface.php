@@ -82,6 +82,7 @@ function form_track_interface($virtual_router_id = NULL)
 
     <input type="hidden" name="action" value="update" />
 <?php
+  $iface_count = 0;
   foreach($network_interfaces as $interface)
   {
     $track = false ;
@@ -100,12 +101,19 @@ function form_track_interface($virtual_router_id = NULL)
 ?>    
     <div>
       <label for="interface_<?php echo $interface ?>">Interface <?php echo $interface ?></label>
+
+      
+      <input type="hidden" name="iface[<?php echo $iface_count ?>]" value="<?php echo $interface ?>" />
+      
       <input type="checkbox" name="track[<?php echo $interface ?>]" value="1" <?php echo $track?'checked="checked"':"" ?>/>
+      Track
+      &nbsp;&nbsp;&nbsp;&nbsp;
       Weight
       <input type="text" style="width:4em; display:inline" name="weight[<?php echo $interface ?>]" maxlength="4" value="<?php echo $weight?$weight:"" ?>" />
 
       </div>
 <?php
+    $iface_count++;
   }
 ?>  
 
@@ -117,6 +125,8 @@ function form_track_interface($virtual_router_id = NULL)
   <script type="text/javascript">
 var validator = new FormValidator('track_interface_form', [
 <?php
+
+  $iface_count = 0 ;
   foreach($network_interfaces as $interface)
   {
 ?>
@@ -125,6 +135,7 @@ var validator = new FormValidator('track_interface_form', [
   rules: 'integer|greater_than[-255]|less_than[255]'
 },
 <?php
+    $iface_count++;
   }
 ?>
 {}], function(errors, event) {

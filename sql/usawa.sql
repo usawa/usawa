@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost:3306
--- Généré le: Mar 02 Avril 2013 à 19:28
+-- Généré le: Ven 05 Avril 2013 à 16:18
 -- Version du serveur: 5.6.10
 -- Version de PHP: 5.4.12
 
@@ -70,11 +70,13 @@ CREATE TABLE IF NOT EXISTS `ip_address` (
 CREATE TABLE IF NOT EXISTS `network_details` (
   `cluster_id` smallint(5) unsigned NOT NULL,
   `interface` varchar(255) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
   `ipv4_address` varbinary(16) DEFAULT NULL,
   `ipv4_netmask` tinyint(3) unsigned DEFAULT NULL,
   `ipv6_address` varbinary(16) DEFAULT NULL,
   `ipv6_netmask` tinyint(4) DEFAULT NULL,
-  PRIMARY KEY (`cluster_id`,`interface`)
+  PRIMARY KEY (`cluster_id`,`interface`),
+  KEY `interface` (`interface`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
@@ -155,13 +157,13 @@ DELIMITER ;
 --
 
 CREATE TABLE IF NOT EXISTS `track_interface` (
-  `track_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `virtual_router_id` tinyint(3) unsigned NOT NULL COMMENT 'Virtual router id',
   `interface` varchar(255) NOT NULL,
-  `weight` smallint(6) NOT NULL COMMENT 'priority to add or remove',
-  PRIMARY KEY (`track_id`,`virtual_router_id`),
-  KEY `virtual_router_id` (`virtual_router_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Interfaces to monitor in VRRP instance' AUTO_INCREMENT=1 ;
+  `weight` smallint(6) DEFAULT NULL COMMENT 'priority to add or remove',
+  PRIMARY KEY (`virtual_router_id`,`interface`),
+  KEY `virtual_router_id` (`virtual_router_id`),
+  KEY `interface` (`interface`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Interfaces to monitor in VRRP instance';
 
 -- --------------------------------------------------------
 
@@ -328,7 +330,8 @@ ALTER TABLE `server`
 -- Contraintes pour la table `track_interface`
 --
 ALTER TABLE `track_interface`
-  ADD CONSTRAINT `track_interface_ibfk_1` FOREIGN KEY (`virtual_router_id`) REFERENCES `vrrp_instance` (`virtual_router_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `track_interface_ibfk_1` FOREIGN KEY (`virtual_router_id`) REFERENCES `vrrp_instance` (`virtual_router_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `track_interface_ibfk_2` FOREIGN KEY (`interface`) REFERENCES `network_details` (`interface`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Contraintes pour la table `track_script`
