@@ -117,27 +117,34 @@ function form_track_script($virtual_router_id = NULL)
 <?php
   $script_count++;
   }
+
+  // Pass Two : Add a new VRRP script  
+  if($count_vrrp_scripts)
+  {
 ?>
-<!--     Pass Two : Add a new VRRP script -->
     <div>
       <label for="script_id">new VRRP Script</label>
       <select name="new_script_id">
         <option value="">-</option>
 <?php
 
-  while( $row = $res_vrrp->fetch_assoc() )
-  {
-    extract($row);
+    while( $row = $res_vrrp->fetch_assoc() )
+    {
+      extract($row);
 ?>
         <option value="<?php echo $script_id ?>"><?php echo $script_name ?></option>
 <?php
-  }
+    }
         
 ?>
       </select>
     &nbsp;&nbsp;&nbsp;&nbsp;
     Weight<input style="width:4em; display:inline" type="text" maxlength="4" name="new_weight" />
-    
+<?php
+
+  } // if($count_vrrp_scripts)
+  
+?>
     </div>
   
     <div><label for="buttons">&nbsp;</label> <input class="styled-button-10" type="submit" value="Submit Form" /></div>

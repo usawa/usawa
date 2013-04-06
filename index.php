@@ -1261,10 +1261,6 @@ function update_track_script()
   global $mysqli;
   extract($_POST);
   
-  echo "<pre>";
-  print_r($_POST);
-  echo "</pre>";
-  
   // first pass : delete or update track scripts
   if(@$script)
   {
@@ -1287,7 +1283,15 @@ function update_track_script()
   }
 
   // Pass two : new track script
-  
+  if (@$new_script_id)
+  {
+    $t_weight=@$new_weight;
+    if(!$t_weight) $t_weight= 'NULL';
+    else     $t_weight="'".$t_weight."'";
+
+    $sql = "insert into track_script values ('$virtual_router_id','$new_script_id',$t_weight)";
+    $mysqli->query($sql);
+  }
   redirect_to($_SERVER['HTTP_REFERER']);
 }
 
