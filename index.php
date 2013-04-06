@@ -592,6 +592,21 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
     $res_route_count = $mysqli->query($sql);
     list($route_count) = $res_route_count->fetch_array();
     
+    $sql = "SELECT 
+              group_concat(distinct interface order by interface separator ',') 
+            FROM 
+              `track_interface` 
+            WHERE
+              virtual_router_id='$virtual_router_id'
+            GROUP BY virtual_router_id";
+    $res_interfaces = $mysqli->query($sql);
+    if($res_interfaces && $res_interfaces->num_rows)
+    {
+      list($interfaces) = $res_interfaces->fetch_array();
+    } else {
+      $interfaces = NULL ;
+    }
+    
 ?>
     <tr onmouseover="$('#server<?php echo $cpt ?>').toggle();" onmouseout="$('#server<?php echo $cpt ?>').toggle()">
       <td><?php echo $virtual_router_id ?></td>
@@ -607,7 +622,7 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
       </td>
       <td><?php echo $route_count ?></td>
       <td>
-        <?php echo "2" ?>
+        <?php echo $interfaces; ?>
         <a style="float:right"href="form_track_interface.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/network_adapter.png" title="Track Interfaces" /></a>
       </td>
       <td>
@@ -924,6 +939,154 @@ function delete_vrrp_sync_group($sync_group_id = NULL)
 
 /* 
   --------------------------------------------------------------
+    VRRP script functions
+  --------------------------------------------------------------
+*/
+function table_vrrp_script()
+{
+  global $mysqli;
+  
+  $sql = "select script_id, name, script, `interval`, weight, fall, rise from vrrp_script order by name";
+
+  $res = $mysqli->query($sql);
+  if( ! $res ) {
+    echo $mysqli->error;  
+    return false;
+  } 
+
+?>
+  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_vrrp_script').slideToggle()">VRRP Scripts</h3>
+  <div id="t_vrrp_script">
+  <table class="bordered sorttable">
+    <thead>
+    <tr>
+      <th>Name</th>
+      <th>Script</th>
+      <th>Interval</th>
+      <th>Weight</th>
+      <th>Fall</th>
+      <th>Rise</th>
+      <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+<?php
+
+  $cpt = 0;
+  while ( $row = $res->fetch_assoc() )
+  {
+    extract($row);
+
+?>
+    <tr>
+      <td><?php echo $name ?></td>
+      <td><?php echo $script ?></td>      
+      <td><?php echo (!is_null($interval))?$interval:"-" ?></td>
+      <td><?php echo (!is_null($weight))?$weight:"-" ?></td>
+      <td><?php echo (!is_null($fall))?$fall:"-" ?></td>
+      <td><?php echo (!is_null($rise))?$rise:"-" ?></td>
+      <td>
+        <a href="form_vrrp_script.php?script_id=<?php echo $script_id ?>" rel=modal:open><img src="icons/script_edit.png" title="edit VRRP script" /></a>
+        &nbsp;
+        <a href="?action=delete&script_id=<?php echo $script_id ?>" onclick="return(confirm('Delete script <?php echo $name ?> ?'));"><img src="icons/script_delete.png" title="delete server" /></a>
+      </td>
+
+    </tr>
+<?php
+    $cpt ++;
+  }
+?>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="6">&nbsp;</td>
+      <td>
+        <a href="form_vrrp_script.php" rel="modal:open"><img src="icons/server_add.png" title="add VRRP script" /></a></td>
+      </td>
+    </tr>
+  </tfoot>
+  </table>
+  </div>
+<?php
+}
+
+function update_vrrp_script()
+{
+  global $mysqli;
+  global $vrrp_script_dictionnary;
+  global $error_code;
+  
+  
+  $old_name = NULL;
+  $script_id = NULL;
+  
+  extract($_POST);
+  
+  // Name update : must not already exist
+  if($old_name && $old_name != $name)
+  {
+    $sql = "select count(name) as count_script from vrrp_script where name='$name'";
+
+    $res = $mysqli->query($sql);
+    
+    extract($res->fetch_array());
+    
+    // Error : exists
+    if ($count_script)
+    {      
+      put_error(1,"Can't add or update: VRRP script $name already exists");
+      redirect_to($_SERVER['HTTP_REFERER']);
+    }
+  }
+  
+  build_default_fields($vrrp_script_dictionnary);
+  
+  extract($_POST);
+  
+  if($script_id) {
+    $sql = "update vrrp_script set
+                name=$name,
+                script=$script,
+                `interval`=$interval,
+                weight=$weight,
+                fall=$fall,
+                rise=$rise
+              where script_id='$script_id'
+              ";
+    if (! ($mysqli->query($sql) && $mysqli->affected_rows ) )
+    {
+      put_error(1,"VRRP script $name not updated");
+      redirect_to($_SERVER['HTTP_REFERER']);
+    }
+    
+  } else {
+    $sql = "insert into vrrp_script (
+              name,
+              script,
+              `interval`,
+              weight,
+              fall,
+              rise )
+            values (
+              $name,
+              $script,
+              $interval,
+              $weight,
+              $fall,
+              $rise)
+            ";
+        
+    if (! ($mysqli->query($sql) && $mysqli->affected_rows ) ) {
+      put_error(1,"VRRP script $name not inserted");
+      redirect_to($_SERVER['HTTP_REFERER']);
+    }
+  }
+  
+  redirect_to($_SERVER['HTTP_REFERER']);
+}
+
+/* 
+  --------------------------------------------------------------
     IP / Routes functions
   --------------------------------------------------------------
 */
@@ -998,6 +1161,7 @@ function update_track_interface()
       }
     }
   }
+  redirect_to($_SERVER['HTTP_REFERER']);
 }
 
 /* 
@@ -1181,6 +1345,7 @@ if(isset( $_REQUEST['lb_id'] ) ) $lb_id = $_REQUEST['lb_id']; else $lb_id= NULL;
 if(isset( $_REQUEST['ip'] ) ) $ip = $_REQUEST['ip']; else $ip = NULL;
 if(isset( $_REQUEST['virtual_router_id'] ) ) $virtual_router_id = $_REQUEST['virtual_router_id']; else $virtual_router_id= NULL;
 if(isset( $_REQUEST['sync_group_id'] ) ) $sync_group_id = $_REQUEST['sync_group_id']; else $sync_group_id = NULL;
+if(isset( $_REQUEST['script_id'] ) ) $script_id = $_REQUEST['script_id']; else $script_id= NULL;
 
 
 switch($action) {
@@ -1206,6 +1371,10 @@ switch($action) {
        
       case "vrrp_details_per_server":
         update_vrrp_details_per_server();
+        break;
+        
+      case "vrrp_script":
+        update_vrrp_script();
         break;
         
       case "track_interface":
@@ -1259,6 +1428,9 @@ switch($action) {
   case "vrrp_instances":
     table_vrrp_instance();
     table_vrrp_sync_group();
+    break;
+  case "vrrp_scripts":
+    table_vrrp_script();
     break;
   default:
     if($cluster_id)

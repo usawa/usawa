@@ -8,6 +8,7 @@ function form_vrrp_script($script_id = NULL)
   global $mysqli;
 
   if ($script_id)
+  {
     $sql = "select 
               name, 
               script, 
@@ -29,66 +30,72 @@ function form_vrrp_script($script_id = NULL)
   <p>Unknown script</p>
 <?php
       return false;
+    }
   }
 ?>
-
   <form name="vrrp_script_form" method="POST">
   <fieldset>
-    <legend>Cluster</legend>
+    <legend>VRRP Script <?php echo @$name?$name:"" ?></legend>
     <div class="error_box"></div>
     
 <?php
-    if ( $cluster_id ) 
+    if ( ! is_null($script_id) ) 
     {
       
 ?>
-    <input type="hidden" name="cluster_id" value="<?php echo $cluster_id ?>" />    
+    <input type="hidden" name="script_id" value="<?php echo $script_id ?>" />    
+    
+    <input type="hidden" name="old_name" value="<?php echo $name ?>" />
 <?php
 
     }
 
 ?>    
-    <input type="hidden" name="f_type" value="cluster" />
+    <input type="hidden" name="f_type" value="vrrp_script" />
 
     <input type="hidden" name="action" value="update" />
     
     <div><label for="name">Name</label> <input type="text" maxlength="255" name="name" value="<?php echo @$name?$name:"" ?>" /></div>
 
-    <div><label for="smtp_server">SMTP Server</label> <input type="text" maxlength="255" name="smtp_server" value="<?php echo @$smtp_server?$smtp_server:"" ?>" /></div>
+    <div><label for="script">Script</label> <input type="text" maxlength="512" name="script" value="<?php echo @$script?$script:"" ?>" /></div>
 
-    <div><label for="smtp_connect_timeout">SMTP Timeout</label> <input type="text" maxlength="255" name="smtp_connect_timeout" value="<?php echo @$smtp_connect_timeout?$smtp_connect_timeout:"" ?>" /></div>
+    <div><label for="interval">Exec. Interval</label> <input type="text" maxlength="4" name="interval" value="<?php echo @$interval?$interval:VRRP_DEFAULT_SCRIPT_INTERVAL ?>" /></div>
 
-    <div><label for="notification_email_from">Source email</label> <input type="text" maxlength="255" name="notification_email_from" value="<?php echo @$notification_email_from?$notification_email_from:"" ?>" /></div>
+    <div><label for="weight">Weight</label> <input type="text" maxlength="4" name="weight" value="<?php echo (!is_null(@$weight))?$weight:VRRP_DEFAULT_SCRIPT_WEIGHT ?>" /></div>
+
+    <div><label for="fall">Number of KO</label> <input type="text" maxlength="4" name="fall" value="<?php echo @$fall?$fall:VRRP_DEFAULT_SCRIPT_FALL ?>" /></div>
     
-    <div><label for="notification_email">Notified emails</label> <input type="text" maxlength="512" name="notification_email" value="<?php echo @$notification_email?$notification_email:"" ?>" /></div>
-
-    <div><label for="enable_traps">Enable SNMP traps</label> <input type="checkbox" name="enable_traps" value="1" <?php echo @$enable_traps?'checked="checked"':"" ?> /></div>
+    <div><label for="rise">Number of OK</label> <input type="text" maxlength="4" name="rise" value="<?php echo @$rise?$rise:VRRP_DEFAULT_SCRIPT_RISE ?>" /></div>
 
     <div><label for="buttons">&nbsp;</label> <input class="styled-button-10" type="submit" value="Submit Form" /></div>
-    
     
   </fieldset>
   </form>
   <script type="text/javascript">
-var validator = new FormValidator('cluster_form', [{
-    name: 'smtp_connect_timeout',
-    rules: 'integer'
-}, {
-    name: 'smtp_server',
-    display: 'SMTP Server',
-    rules: 'valid_ip'
-}, {
+var validator = new FormValidator('vrrp_script_form', [{
     name: 'name',
     display: 'Name',
     rules: 'required|alpha_dash'
 }, {
-    name: 'notification_email',
-    display: 'Notified emails',
-    rules: 'valid_emails'
+    name: 'script',
+    display: 'Script',
+    rules: 'required|alpha_dash'
 }, {
-    name: 'notification_email_from',
-    display: 'Source email',
-    rules: 'valid_email'
+    name: 'interval',
+    display: 'Interval',
+    rules: 'is_natural'
+}, {
+    name: 'weight',
+    display: 'Weight',
+    rules: 'integer|less_than[255]|greater_than[-255]'
+}, {
+    name: 'fall',
+    display: 'Fall',
+    rules: 'integer|is_natural_no_zero'
+}, {
+    name: 'rise',
+    display: 'Rise',
+    rules: 'integer|is_natural_non_zero'
 }], function(errors, event) {
     var SELECTOR_ERRORS = $('.error_box'),
         SELECTOR_SUCCESS = $('.success_box');
@@ -121,6 +128,6 @@ var validator = new FormValidator('cluster_form', [{
 }
 
 
-if(isset( $_REQUEST['cluster_id'] ) ) $cluster_id = $_REQUEST['cluster_id']; else $cluster_id= NULL;
+if(isset( $_REQUEST['script_id'] ) ) $script_id = $_REQUEST['script_id']; else $script_id= NULL;
 
-form_cluster($cluster_id); 
+form_vrrp_script($script_id); 

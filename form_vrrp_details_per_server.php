@@ -46,16 +46,24 @@ function form_vrrp_details_per_server($virtual_router_id = NULL)
 
 <?php
   $cpt_server = 0;
+  
+  $validate = "";
+  
   $res->data_seek(0);
   while ( $row = $res->fetch_assoc() )
   {
     $cpt_server++;
     extract($row);
-        
+
+      $validate .= "{
+  name: 'priority[$lb_id]',
+  rules: 'is_natural|less_than[256]'
+},";
+
 ?>        
     <div>
       <label><?php echo $server_name; ?> Prio.</label>
-      <input type="text" style="width:3em; display:inline" name="priority[<?php echo $lb_id ?>]" maxlength="3" value="<?php echo $priority?$priority:VRRP_DEFAULT_PRIORITY ?>" />
+      <input type="text" style="width:3em; display:inline" name="priority[<?php echo $lb_id ?>]" maxlength="3" value="<?php echo (!is_null($priority))?$priority:VRRP_DEFAULT_PRIORITY ?>" />
       <input type="radio" name="state[<?php echo $lb_id ?>]" value="MASTER" <?php echo (@$state=="MASTER")?'checked="checked"':"" ?>/>MASTER
       <input type="radio" name="state[<?php echo $lb_id ?>]" value="BACKUP" <?php echo (!@$state||$state=="BACKUP")?'checked="checked"':"" ?>/>BACKUP
     </div>
@@ -69,6 +77,37 @@ function form_vrrp_details_per_server($virtual_router_id = NULL)
     
   </fieldset>
   </form>
+  <script type="text/javascript">
+var validator = new FormValidator('vrrp_details_form', [
+<?php
+  echo $validate;
+?>
+{}], function(errors, event) {
+    var SELECTOR_ERRORS = $('.error_box'),
+        SELECTOR_SUCCESS = $('.success_box');
+        
+    if (errors.length > 0) {
+        SELECTOR_ERRORS.empty();
+        
+        for (var i = 0, errorLength = errors.length; i < errorLength; i++) {
+            SELECTOR_ERRORS.append(errors[i].message + '<br />');
+        }
+        
+    /*    SELECTOR_SUCCESS.css({ display: 'none' }); */
+        SELECTOR_ERRORS.fadeIn(200);
+    } else {
+        SELECTOR_ERRORS.css({ display: 'none' });
+        /* SELECTOR_SUCCESS.fadeIn(200); */
+    }
+    /*
+    if (event && event.preventDefault) {
+        event.preventDefault();
+    } else if (event) {
+        event.returnValue = false;
+    } */
+});
+
+  </script>
   
 <?php
 

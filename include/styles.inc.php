@@ -55,6 +55,7 @@ function page_header($title = NULL)
           <li><a href="?action=clusters"><img src="icons/link.png" />&nbsp;Clusters</a></li>
           <li><a href="?action=servers"><img src="icons/server.png" />&nbsp;Servers</a></li>
           <li><a href="?action=vrrp_instances"><img src="icons/brick.png" />&nbsp;VRRP Instances</a></li>
+          <li><a href="?action=vrrp_scripts"><img src="icons/script.png" />&nbsp;VRRP Scripts</a></li>
         </ul>
       </div>
     </div>
@@ -118,8 +119,18 @@ function page_header($title = NULL)
 </ul>
     </div>
     <div id="content">
+    
+    <div class="display_error" style="display:none" onmouseover="popup('Click to close');" onclick="$('.display_error').hide();">
+      
+      <div id="error_msg" style="margin-left:48px">
+      </div>
+    </div>
 <?php
-
+  // Error in session
+  if(check_error()) {
+    display_error();
+    reset_error();
+  }
 }
 
 function page_footer()
