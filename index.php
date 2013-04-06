@@ -615,14 +615,14 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
     <tr>
       <th>VRRP Id.</th>
       <th>Name</th>
+      <th>Cluster</th>
       <th>Iface</th>
       <th>Advert Int.</th>
-      <th>Auth.</th>
-      <th>Cluster</th>
       <th>Sync Group</th>
       <th>Virt. IPs.</th>
       <th>Virt. Routes</th>
       <th>Track Interfaces</th>
+      <th>Track Scripts</th>
       <th>Action</th>
     </tr>
     </thead>
@@ -634,18 +634,22 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
   {
     extract($row);
     
+    // IP
     $sql = "select count(ip) from ip_address where virtual_router_id='$virtual_router_id'";
 
     $res_ip_count = $mysqli->query($sql);
     list($ip_count) = $res_ip_count->fetch_array();
 
+    // Routes
     $sql = "select count(id_route) from route where virtual_router_id='$virtual_router_id'";
 
     $res_route_count = $mysqli->query($sql);
     list($route_count) = $res_route_count->fetch_array();
     
+    // Track Interfaces
+    $interfaces = NULL;
     $sql = "SELECT 
-              group_concat(distinct interface order by interface separator ',') 
+              group_concat(distinct interface order by interface separator ', ') 
             FROM 
               `track_interface` 
             WHERE
@@ -655,18 +659,31 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
     if($res_interfaces && $res_interfaces->num_rows)
     {
       list($interfaces) = $res_interfaces->fetch_array();
-    } else {
-      $interfaces = NULL ;
+    }
+    
+    // Track scripts
+    $scripts = NULL;
+    $sql = "SELECT 
+              group_concat(distinct name order by name separator ', ') 
+            FROM 
+              track_script t, vrrp_script v
+            WHERE
+              t.script_id = v.script_id
+              and t.virtual_router_id='$virtual_router_id'
+            GROUP BY virtual_router_id";
+    $res_scripts = $mysqli->query($sql);
+    if($res_scripts && $res_scripts->num_rows)
+    {
+      list($scripts) = $res_scripts->fetch_array();
     }
     
 ?>
     <tr onmouseover="$('#server<?php echo $cpt ?>').toggle();" onmouseout="$('#server<?php echo $cpt ?>').toggle()">
       <td><?php echo $virtual_router_id ?></td>
       <td><?php echo $name ?></td>      
+      <td><?php echo $cluster_name?$cluster_name:"-" ?></td>
       <td><?php echo $interface ?></td>
       <td><?php echo $advert_int?$advert_int:"-" ?></td>
-      <td><?php echo $auth_type ?></td>
-      <td><?php echo $cluster_name?$cluster_name:"-" ?></td>
       <td><?php echo $sync_group_name?$sync_group_name:"-" ?></td>
       <td>
         <?php echo $ip_count ?>
@@ -674,17 +691,19 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
       </td>
       <td><?php echo $route_count ?></td>
       <td>
-        <?php echo $interfaces; ?>
-        <a style="float:right"href="form_track_interface.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/network_adapter.png" title="Track Interfaces" /></a>
+        <?php echo $interfaces?$interfaces:"-" ?>
+        <a style="float:right" href="form_track_interface.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/network_adapter.png" title="Track Interfaces" /></a>
       </td>
+      <td>
+        <?php echo $scripts?$scripts:"-" ?>
+      <a  style="float:right" href="form_track_script.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/script.png" title="Track a new script" /></a>        
+
       <td>
         <a href="form_vrrp_instance.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/brick_edit.png" title="Sdit VRRP instance" /></a>
         &nbsp;
         <a href="?action=delete&virtual_router_id=<?php echo $virtual_router_id ?>"  onclick="return(confirm('Delete VRRP instance <?php echo $name ?> ?'));"><img src="icons/brick_delete.png" title="Delete VRRP instance" /></a>
         &nbsp;
         <a href="form_vrrp_details_per_server.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/computer_link.png" title="Edit nodes priorities" /></a>
-<!--         &nbsp; -->
-<!--         <a href="?action=edit_ip&virtual_router_id=<?php echo $virtual_router_id ?>"><img src="icons/network_ip.png" title="Virtual IP addresses" /></a>         -->
 <!--         &nbsp; -->
 <!--         <a href="form_track_interface.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/network_adapter.png" title="Track Interfaces" /></a>         -->
         </td>
@@ -1057,7 +1076,7 @@ function table_vrrp_script()
     <tr>
       <td colspan="6">&nbsp;</td>
       <td>
-        <a href="form_vrrp_script.php" rel="modal:open"><img src="icons/server_add.png" title="add VRRP script" /></a></td>
+        <a href="form_vrrp_script.php" rel="modal:open"><img src="icons/script_add.png" title="add VRRP script" /></a></td>
       </td>
     </tr>
   </tfoot>
@@ -1237,6 +1256,41 @@ function update_track_interface()
   redirect_to($_SERVER['HTTP_REFERER']);
 }
 
+function update_track_script()
+{
+  global $mysqli;
+  extract($_POST);
+  
+  echo "<pre>";
+  print_r($_POST);
+  echo "</pre>";
+  
+  // first pass : delete or update track scripts
+  if(@$script)
+  {
+    foreach($script as $script_id)
+    {
+      $t_track = @$track[$script_id];
+      $t_weight = @$weight[$script_id];
+      
+      // Delete
+      if(! $t_track ) 
+      {
+        $sql = "delete from track_script where virtual_router_id='$virtual_router_id' and script_id='$script_id'";
+        $mysqli->query($sql);
+      } else {
+        // Update
+        $sql = "update track_script set weight='$t_weight' where virtual_router_id='$virtual_router_id' and script_id='$script_id'";
+        $mysqli->query($sql);
+      }
+    }
+  }
+
+  // Pass two : new track script
+  
+  redirect_to($_SERVER['HTTP_REFERER']);
+}
+
 /* 
   --------------------------------------------------------------
     IP / Routes functions
@@ -1321,17 +1375,20 @@ function table_ip_adresses($type, $id)
       <a href="form_ip_address.php?virtual_router_id=<?php echo $virtual_router_id ?>" rel="modal:open"><img src="icons/network_ip_add.png" title="Add IP Address" /></a>
 <?php
     }
+    
     if( $type == 'static' )
     {
 ?>
       <a href="form_ip_address.php?cluster_id=<?php echo $cluster_id ?>" rel="modal:open"><img src="icons/network_ip_add.png" title="Add IP Address" /></a>
 <?php
     }
+    
 ?>  
       </td>
     </tr>
     </tfoot>
   </table>
+  </div>
 <?php
 }
 
@@ -1450,6 +1507,10 @@ switch($action) {
         
       case "track_interface":
         update_track_interface();
+        break;
+      
+      case "track_script":
+        update_track_script();
         break;
         
       case "ip_address":

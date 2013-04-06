@@ -79,7 +79,7 @@ var validator = new FormValidator('vrrp_script_form', [{
 }, {
     name: 'script',
     display: 'Script',
-    rules: 'required|alpha_dash'
+    rules: 'required'
 }, {
     name: 'interval',
     display: 'Interval',
