@@ -1,14 +1,48 @@
 <?php
 
-$cluster_dictionnary = array ( 'name', 'notification_email_from', 'smtp_server','smtp_connect_timeout', 'notification_email', 'enable_traps');
-$server_dictionnary = array ('name', 'ip_address', 'router_id', 'access_backend', 'service_backend', 'service_path', 
-              'ssh_user', 'ssh_passphrase', 'ssh_public_key_path', 'ssh_private_key_path', 'conf_path', 'cluster_id');
-$vrrp_instance_dictionnary = array ('name', 'use_vmac', 'native_ipv6', 'interface', 'dont_track_primary', 'mcast_src_ip', 
-              'lvs_sync_daemon_interface', 'garp_master_delay', 'advert_int', 'auth_type', 'auth_pass', 'nopreempt',
-              'preempt_delay', 'notify_master', 'notify_backup', 'notify_fault', 'notify_stop', 'notify', 'smtp_alert', 
-              'cluster_id', 'sync_group_id', 'comment');
-$ip_address_dictionnary = array ('ip', 'mask', 'broadcast', 'dev', 'scope', 'label', 'is_gateway', 'is_disabled', 'cluster_id', 'virtual_router_id' );
-$vrrp_sync_group_dictionnary = array ('name', 'notify_master', 'notify_backup', 'notify_fault', 'notify', 'smtp_alert', 'cluster_id');
+function put_error($error_code,$msg)
+{
+  if($error_code) {
+    $_SESSION['ERROR_CODE'] = $error_code;
+    $_SESSION['ERROR_MSG'] = $msg;
+  }
+}
+
+function check_error()
+{
+  if(@$_SESSION['ERROR_CODE']) return true;
+ 
+  return false;
+}
+
+function get_error()
+{
+  if(check_error()) return $_SESSION['ERROR_MSG'];
+}
+
+function reset_error()
+{
+  $_SESSION['ERROR_CODE'] = false;
+  $_SESSION['ERROR_MSG'] = false;
+  unset($_SESSION['ERROR_CODE']);
+  unset($_SESSION['ERROR_MSG']);
+}
+
+function display_error()
+{
+  if( check_error() )
+  {
+    $msg=get_error();
+?>
+<script>
+  $('#error_msg').text('<?php echo addslashes($msg); ?>');
+  $('.display_error').show();
+</script>
+
+<?php
+
+  }
+}
 
 function is_connected()
 {
