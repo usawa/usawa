@@ -29,7 +29,10 @@ function form_cluster($cluster_id = NULL)
     {
       
 ?>
-    <input type="hidden" name="cluster_id" value="<?php echo $cluster_id ?>" />    
+    <input type="hidden" name="cluster_id" value="<?php echo $cluster_id ?>" />
+    
+    <input type="hidden" name="old_name" value="<?php echo $name ?>" />
+    
 <?php
 
     }

@@ -45,7 +45,10 @@ function form_server($lb_id = NULL, $cluster_id = NULL)
     {
       
 ?>
-    <input type="hidden" name="lb_id" value="<?php echo $lb_id ?>" />    
+    <input type="hidden" name="lb_id" value="<?php echo $lb_id ?>" />
+    
+    <input type="hidden" name="old_name" value="<?php echo $name ?>" />
+
 <?php
 
     }

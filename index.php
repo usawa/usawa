@@ -111,9 +111,31 @@ function update_cluster()
 {
   global $mysqli;
   global $cluster_dictionnary;
+   
+  $old_name = NULL;
+  $cluster_id = NULL ;
   
+  extract($_POST);
+  
+  // Name update : must not already exist
+  if($old_name && $old_name != $name)
+  {
+    $sql = "select count(name) as count_cluster from cluster where name='$name'";
+    
+    $res = $mysqli->query($sql);
+    
+    extract($res->fetch_array());
+    
+    // Error : exists
+    if ($count_cluster)
+    {      
+      put_error(1,"Can't add or update $old_name: Cluster $name already exists");
+      redirect_to($_SERVER['HTTP_REFERER']);
+    }
+  }
+
   build_default_fields($cluster_dictionnary);
- 
+
   extract($_POST);
     
   if ($cluster_id) 
@@ -129,12 +151,9 @@ function update_cluster()
             where cluster_id='$cluster_id'
             ";
     if (! $mysqli->query($sql) ) {
-      echo $mysqli->error;
+      put_error(1,"SQL Error. Can't update cluster $name."); 
     }
-    else
-    {
-      redirect_to("?cluster_id=$cluster_id");
-    }
+
   }
   else
   {
@@ -148,11 +167,13 @@ function update_cluster()
             $enable_traps
             )";
     
-    if (! $mysqli->query($sql) ) echo $mysqli->error;
-    
-    redirect_to("?cluster_id=".$mysqli->insert_id);
-    
+    if (! $mysqli->query($sql) )
+    {
+      put_error(1,"SQL Error. Can't insert cluster $name."); 
+    }
   }
+  
+  redirect_to($_SERVER['HTTP_REFERER']);
   
 }
 
@@ -181,14 +202,32 @@ function update_server()
 {
   global $mysqli;
   global $server_dictionnary;
-  global $error_code;
   
   // create a cluster based on server
   $new_cluster_id = NULL;
   $old_cluster_id=@$_POST['old_cluster_id'];
   $create_cluster = NULL;
+  $old_name = NULL ;
+  $lb_id = NULL;
   
   extract($_POST);
+  
+  // Name update : must not already exist
+  if($old_name && $old_name != $name)
+  {
+    $sql = "select count(name) as count_server from server where name='$name'";
+    
+    $res = $mysqli->query($sql);
+    
+    extract($res->fetch_array());
+    
+    // Error : exists
+    if ($count_server)
+    {      
+      put_error(1,"Can't add or update: Server $name already exists");
+      redirect_to($_SERVER['HTTP_REFERER']);
+    }
+  }
   
   if (!$cluster_id && $create_cluster) 
   {
@@ -230,8 +269,7 @@ function update_server()
               
     if (! $mysqli->query($sql) ) 
     {
-      echo $mysqli->error;
-      $error_code = true;
+      put_error(1,"SQL Error. Can't update server $name.");
     }
   }
   else
@@ -255,16 +293,9 @@ function update_server()
 
     if (! $mysqli->query($sql) ) 
     {
-      echo $mysqli->error;
-      $error_code = true;
-    }
-    else
-    {
-      $lb_id = $mysqli−>insert_id;
+      put_error(1,"SQL Error. Can't insert server $name.");
     }
   }
-
-  $cluster_id = str_replace("'",'',$cluster_id);
 
   redirect_to($_SERVER['HTTP_REFERER']);
 }
@@ -386,11 +417,45 @@ function update_vrrp_instance()
   $new_cluster_id=@$_POST['cluster_id'];
   $old_cluster_id=@$_POST['old_cluster_id'];
   $old_sync_group_id=@$_POST['old_sync_group_id'];
+  $old_name = NULL ;
+  $old_virtual_router_id = NULL;
   
-  /* echo "<pre>";
-  print_r($_POST);
-  echo "</pre>"; */
+  extract($_POST);
   
+  // Name update : must not already exist
+  if($old_name && $old_name != $name)
+  {
+    $sql = "select count(name) as count_vrrp from vrrp_instance where name='$name'";
+    
+    $res = $mysqli->query($sql);
+    
+    extract($res->fetch_array());
+    
+    // Error : exists
+    if ($count_vrrp)
+    {      
+      put_error(1,"Can't add or update $old_name: VRRP instance $name already exists");
+      redirect_to($_SERVER['HTTP_REFERER']);
+    }
+  }
+
+    // Name update : must not already exist
+  if($old_virtual_router_id && $old_virtual_router_id != $virtual_router_id)
+  {
+    $sql = "select count(name) as count_vrrp from vrrp_instance where virtual_router_id='$virtual_router_id'";
+    
+    $res = $mysqli->query($sql);
+    
+    extract($res->fetch_array());
+    
+    // Error : exists
+    if ($count_vrrp)
+    {      
+      put_error(1,"Can't add or update $name: Virtual Router Id $virtual_router_id already exists");
+      redirect_to($_SERVER['HTTP_REFERER']);
+    }
+  }
+
   build_default_fields($vrrp_instance_dictionnary);
  
   extract($_POST);
@@ -428,10 +493,8 @@ function update_vrrp_instance()
            where virtual_router_id='$virtual_router_id'
             ";
             
-  if (! $mysqli->query($sql) ) {
-      echo "<br />".$sql."<br />";
-      echo $mysqli->error;
-      $error_code = true;
+    if (! $mysqli->query($sql) ) {
+      put_error(1,"SQL Error. Can't update VRRP instance $name.");
     }
   }
   else
@@ -486,22 +549,11 @@ function update_vrrp_instance()
     
     if (! $mysqli->query($sql) )
     {
-      echo "<br />".$sql."<br />";
-      echo $mysqli->error;
-      $error_code = true;
+      put_error(1,"SQL Error. Can't insert VRRP instance $name.");
     }
-    else
-    {
-      $virtual_router_id = $mysqli->insert_id;
-    }
-        
   }
-
-  if (! $error_code ) 
-  {
-    // redirect_to("?virtual_router_id=".$virtual_router_id);
-    redirect_to($_SERVER['HTTP_REFERER']);
-  }
+  
+  redirect_to($_SERVER['HTTP_REFERER']);
   
 }
 
@@ -729,14 +781,31 @@ function update_vrrp_sync_group()
   global $mysqli;
   global $vrrp_sync_group_dictionnary;
   global $error_code;
-  
+
   $state = false ; 
   $unquoted_sync_group_id=@$_POST['sync_group_id'];
+  $old_name = NULL;
+  $sync_group_id = NULL;
   
-  /* echo "<pre>";
-  print_r($_POST);
-  echo "</pre>"; */
+  extract($_POST);
   
+  // Name update : must not already exist
+  if($old_name && $old_name != $name)
+  {
+    $sql = "select count(name) as count_sync from vrrp_sync_group where name='$name'";
+    
+    $res = $mysqli->query($sql);
+    
+    extract($res->fetch_array());
+    
+    // Error : exists
+    if ($count_sync)
+    {      
+      put_error(1,"Can't add or update $old_name: VRRP Synchronization Group $name already exists");
+      redirect_to($_SERVER['HTTP_REFERER']);
+    }
+  }
+
   build_default_fields($vrrp_sync_group_dictionnary);
  
   extract($_POST);
@@ -756,9 +825,7 @@ function update_vrrp_sync_group()
             ";
     if (! $mysqli->query($sql) )
     {
-      echo "<br />".$sql."<br />";
-      echo $mysqli->error;
-      $error_code = true;
+      put_error(1,"SQL Error. Can't update VRRP Synchronization group $name.");
     }
 
   }          
@@ -785,22 +852,11 @@ function update_vrrp_sync_group()
     
     if (! $mysqli->query($sql) )
     {
-      echo "<br />".$sql."<br />";
-      echo $mysqli->error;
-      $error_code = true;
+      put_error(1,"SQL Error. Can't insert VRRP Synchronization group $name.");
     }
-    else
-    {
-      $sync_group_id = $mysqli->insert_id;
-    }
-        
   }
-
-  if (! $error_code ) 
-  {
-    // redirect_to("?virtual_router_id=".$virtual_router_id);
-    redirect_to($_SERVER['HTTP_REFERER']);
-  }
+  
+  redirect_to($_SERVER['HTTP_REFERER']);
   
 }
 
@@ -950,7 +1006,7 @@ function table_vrrp_script()
 
   $res = $mysqli->query($sql);
   if( ! $res ) {
-    echo $mysqli->error;  
+    put_error(1,"Can't execute SQL query. Please check database connectivity");
     return false;
   } 
 
@@ -1083,6 +1139,23 @@ function update_vrrp_script()
   }
   
   redirect_to($_SERVER['HTTP_REFERER']);
+}
+
+function delete_vrrp_script($script_id = NULL)
+{
+  global $mysqli;
+    
+  if ($script_id) 
+  {
+
+    $sql = "delete from vrrp_script
+          where script_id='$script_id'";
+    $res = $mysqli->query($sql);
+    
+  }
+  
+  redirect_to($_SERVER['HTTP_REFERER']);
+
 }
 
 /* 
@@ -1311,9 +1384,7 @@ function update_ip_address()
 
   if (! $mysqli->query($sql) ) 
   {
-    echo $mysqli->error;
-    $error_code = true;
-    exit;
+    put_error(1,"SQL error. Can't insert or update IP addres $ip.");
   }
 
   redirect_to($_SERVER['HTTP_REFERER']);
@@ -1393,6 +1464,7 @@ switch($action) {
     if($virtual_router_id) delete_vrrp_instance($virtual_router_id);
     if($ip) delete_ip_address($ip);
     if($sync_group_id) delete_vrrp_sync_group($sync_group_id);
+    if($script_id) delete_vrrp_script($script_id);
     break;
   
 }

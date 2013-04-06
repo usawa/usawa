@@ -126,16 +126,18 @@ function page_header($title = NULL)
       </div>
     </div>
 <?php
+}
+
+function page_footer()
+{
   // Error in session
   if(check_error()) {
     display_error();
     reset_error();
   }
-}
 
-function page_footer()
-{
 ?>
+
     <div id="footer"> 
       Usawa 0.0.1a - S. ROHAUT - S. BELARBI<br />
     </div> 

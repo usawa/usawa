@@ -83,6 +83,10 @@ function form_vrrp_instance($virtual_router_id = NULL)
     {
 ?>
     <input type="hidden" name="action" value="update" />
+
+    <input type="hidden" name="old_name" value="<?php echo $name ?>" />
+
+    <input type="hidden" name="old_virtual_router_id" value="<?php echo $virtual_router_id ?>" />
 <?php
 
     }

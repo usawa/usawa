@@ -56,7 +56,9 @@ function form_vrrp_sync_group($sync_group_id = NULL)
       
 ?>
     <input type="hidden" name="sync_group_id" value="<?php echo $sync_group_id ?>" />    
-    
+
+    <input type="hidden" name="old_name" value="<?php echo $name ?>" />    
+
     <input type="hidden" name="action" value="update" />
 
 <?php
