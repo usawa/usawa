@@ -14,7 +14,7 @@ function table_cluster($cluster_id = NULL)
 {
   global $mysqli;
   
-  $unique = false ;
+  $cluster_name = NULL ;
   
   $sql = "select 
     c.cluster_id,
@@ -27,7 +27,6 @@ function table_cluster($cluster_id = NULL)
   if ( $cluster_id )
   {
     $sql .= "where c.cluster_id=$cluster_id ";
-    $unique = true ;
   }
   
   
@@ -36,16 +35,24 @@ function table_cluster($cluster_id = NULL)
 
   $res = $mysqli->query($sql);
   
-  if( ! $res ) {
-    $mysqli->error;
-    echo '<br />'.$sql;
+  if( ! $res ) 
+  {
+    put_error(1,"SQL Error. Please check database connectivity");
+    return false;
   }
 
-  $row = $res->fetch_assoc();
-  extract($row);
+  if( $cluster_id && ! $res->num_rows ) 
+  {
+    put_error(1,"Selected cluster (id=$cluster_id) doesn't exist.");
+    return false;
+  } else {
+    $row = $res->fetch_assoc();
+    $cluster_name = $row['name'];
+    $res->data_seek(0);
+  }
 ?>  
 
-  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_cluster').slideToggle()">Manage cluster <?php echo $unique?$name:"" ?></h3>
+  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_cluster').slideToggle()">Manage cluster <?php echo $cluster_name ?></h3>
   <div id="t_cluster">
   <table class="bordered sorttable">
     <thead>
@@ -303,6 +310,24 @@ function update_server()
 function table_server($cluster_id = NULL)
 {
   global $mysqli;
+  $cluster_name = NULL;
+  
+  // cluster name
+  if ($cluster_id)
+  {
+    $sql = "select name from cluster where cluster_id='$cluster_id'";
+    $res = $mysqli->query($sql);
+    if( ! $res ) 
+    {
+      put_error(1,"SQL Error. Can't display servers");
+      return false;
+    }
+    
+    if ($res->num_rows) 
+    {
+      list($cluster_name) = $res->fetch_array();
+    }
+  }
   
   $sql = "select
         s.lb_id,
@@ -325,10 +350,20 @@ function table_server($cluster_id = NULL)
   $sql .= "order by s.name";
 
   $res = $mysqli->query($sql);
-  if( ! $res ) echo $mysqli->error;
-
+  if( ! $res ) 
+  {
+    put_error(1,"SQL Error. Can't display servers");
+    return false;
+  }
+  
+  $title = "Manage servers ";
+  if ($cluster_name)
+  {
+    $title .= "for cluster $cluster_name";
+  }
+  
 ?>
-  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_server').slideToggle()">Manage servers</h3>
+  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_server').slideToggle()"><?php echo $title ?></h3>
   <div id="t_server">
   <table class="bordered sorttable">
     <thead>
@@ -376,7 +411,7 @@ function table_server($cluster_id = NULL)
     <tr>
       <td colspan="7">&nbsp;</td>
       <td>
-        <a href="form_server.php" rel="modal:open"><img src="icons/server_add.png" title="add server" /></a></td>
+        <a href="form_server.php<?php echo $cluster_id?"?cluster_id=$cluster_id":'' ?>" rel="modal:open"><img src="icons/server_add.png" title="add server" /></a></td>
       </td>
     </tr>
   </tfoot>
@@ -561,7 +596,30 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
 {
   global $mysqli;
   
+  $cluster_name = NULL;
   
+  // cluster name
+  if ($cluster_id)
+  {
+    $sql = "select name from cluster where cluster_id='$cluster_id'";
+    $res = $mysqli->query($sql);
+    if( ! $res ) 
+    {
+      put_error(1,"SQL Error. Can't display vrrp instances");
+      return false;
+    }
+    
+    if ($res->num_rows) 
+    {
+      list($cluster_name) = $res->fetch_array();
+      
+    } else {
+      put_error(1,"Cluster (id=$cluster_id) doesn't exist");
+      return false;
+    }
+    
+  }
+ 
   $sql = "select
               v.virtual_router_id,
               v.name,
@@ -607,8 +665,16 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
     echo "<br />$sql</br />";
     echo $mysqli->error;
   }
+
+  $title = "Manage VRRP Instances ";
+  if ($cluster_name)
+  {
+    $title .= "for cluster $cluster_name";
+  }
+  
+
 ?>
-  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_vrrp_instance').slideToggle()">Manage VRRP Instances</h3>
+  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_vrrp_instance').slideToggle()"><?php echo $title ?></h3>
   <div id="t_vrrp_instance">
   <table class="bordered sorttable">
     <thead>
@@ -765,7 +831,7 @@ function table_vrrp_instance($cluster_id = NULL, $virtual_router_id = NULL)
     <tr>
       <td colspan="10">&nbsp;</td>
       <td>
-        <a href="form_vrrp_instance.php" rel="modal:open"><img src="icons/brick_add.png" title="add VRRP Instance" /></a>
+        <a href="form_vrrp_instance.php<?php echo $cluster_id?"?cluster_id=$cluster_id":'' ?>" rel="modal:open"><img src="icons/brick_add.png" title="add VRRP Instance" /></a>
       </td>
     </tr>
   </tfoot>

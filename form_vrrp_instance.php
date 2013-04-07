@@ -6,6 +6,8 @@ function form_vrrp_instance($virtual_router_id = NULL)
 {
   global $mysqli;
   
+  if(isset( $_REQUEST['cluster_id'] ) ) $cluster_id = $_REQUEST['cluster_id']; else $cluster_id= NULL;
+
   if ( $virtual_router_id ) {
   
     $sql = "select 
@@ -40,7 +42,7 @@ function form_vrrp_instance($virtual_router_id = NULL)
       extract($row);
     }
   } else {
-    $cluster_id = NULL ;
+//     $cluster_id = NULL ;
     $sync_group_id = NULL ;
     $auth_type = VRRP_DEFAULT_AUTH_TYPE ;
   }
@@ -118,7 +120,7 @@ function form_vrrp_instance($virtual_router_id = NULL)
     {
 ?>
       <select name="cluster_id">
-        <option value="">---</option>
+        <option value="">-</option>
 <?php
       while ( $row = $res_cluster->fetch_assoc() )
       {
@@ -135,7 +137,7 @@ function form_vrrp_instance($virtual_router_id = NULL)
     <div>
       <label for="sync_group_id">Sync Group</label> 
       <select name="sync_group_id">
-        <option value="">---</option>
+        <option value="">-</option>
 <?php
     if($cluster_id)
     {
