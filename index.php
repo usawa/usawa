@@ -4,6 +4,7 @@ session_start();
 
 require_once("include/usawa_base.inc.php");
 
+  
 /* 
   --------------------------------------------------------------
     cluster functions
@@ -1649,6 +1650,14 @@ switch($action) {
     }
     break;
 }
+
+require("include/conf_generator.php");
+
+echo "<pre>";
+
+echo generate_configuration(22);
+
+echo "</pre>";
 
 // table_ip_adresses('virtual',1);
 
