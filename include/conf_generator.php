@@ -172,6 +172,51 @@ function generate_vrrp_script($server_id = NULL)
   return $vrrp_script;
 }
 
+// generate track_script
+function generate_track_script($virtual_router_id = NULL)
+{
+  global $mysqli;
+  global $tabulate;
+
+  $track_script = "";
+  
+  if (!$virtual_router_id) return false;
+    
+  $sql = "select 
+            s.name,
+            t.weight
+          from track_script t, vrrp_script s
+          where 
+            t.script_id = s.script_id
+            and t.virtual_router_id = '$virtual_router_id'";
+          
+  // SQL Error
+  if (! $res = $mysqli->query($sql) ) return false;
+  
+  // No lines
+  if ( ! $res->num_rows ) return false;
+
+  $track_script .= tabulate("track script {\n",$tabulate);
+  
+  $tabulate++;
+  
+  while ($row = $res->fetch_assoc())
+  {
+    extract($row);
+    
+    if(! is_null($weight) ) $weight = "weight $weight";
+    
+    $track_script .= tabulate("$name $weight\n",$tabulate);
+
+  }
+  
+  $tabulate--;
+  $track_script .= tabulate("}\n",$tabulate);
+  
+  return $track_script;
+}
+
+
 function generate_vrrp_instance($virtual_router_id = NULL)
 {
   global $mysqli;
@@ -264,9 +309,13 @@ function generate_vrrp_instance($virtual_router_id = NULL)
 
   if ($smtp_alert) $vrrp_instance .=tabulate("smtp_alert\n",$tabulate);
 
+  // track script
+  $vrrp_instance .= generate_track_script($virtual_router_id);
+
   $tabulate--;
   $vrrp_instance .=tabulate("}\n",$tabulate);
-    
+  
+  
   return $vrrp_instance;
 }
 
