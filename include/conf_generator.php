@@ -6,7 +6,7 @@ function tabulate($string, $level)
         if($level) {
                 for( $i = 1 ; $i <= $level ; $i++ ) $string="\t".$string;
         }
-        return $string;
+        return $string."\n";
 }
 
 /* keepalived.conf generator */
@@ -23,7 +23,9 @@ function generate_configuration($server_id = NULL)
   $configuration = "";
   
   $configuration .= generate_global($server_id) ;
-  
+
+  $configuration .= generate_ip_address($server_id,'static') ;
+
   $configuration .= generate_vrrp_script($server_id) ;
   
   $configuration .= generate_vrrp_instances($server_id) ;
@@ -62,26 +64,26 @@ function generate_global($server_id = NULL)
   
   extract($row);
   
-  $global_defs = tabulate("global_defs {\n",$tabulate);
+  $global_defs = tabulate("global_defs {",$tabulate);
  
   $tabulate++;
 
   // router_id
-  if ($router_id) $global_defs .= tabulate("router_id $router_id\n",$tabulate);
+  if ($router_id) $global_defs .= tabulate("router_id $router_id",$tabulate);
 
   // Notification email from
-  if ($notification_email_from) $global_defs .= tabulate("notification_email_from $notification_email_from\n",$tabulate);
+  if ($notification_email_from) $global_defs .= tabulate("notification_email_from $notification_email_from",$tabulate);
   
   // smtp server
-  if ($smtp_server) $global_defs .= tabulate("smtp_server $smtp_server\n",$tabulate);
+  if ($smtp_server) $global_defs .= tabulate("smtp_server $smtp_server",$tabulate);
   
   // smtp_connect_timeout
-  if ($smtp_connect_timeout) $global_defs .= tabulate("smtp_connect_timeout $smtp_connect_timeout\n",$tabulate);
+  if ($smtp_connect_timeout) $global_defs .= tabulate("smtp_connect_timeout $smtp_connect_timeout",$tabulate);
   
   // notification_email
   if ($notification_email) 
   {
-    $global_defs .= tabulate("notification_email {\n",$tabulate);
+    $global_defs .= tabulate("notification_email {",$tabulate);
     
     $tabulate ++;
     
@@ -89,21 +91,21 @@ function generate_global($server_id = NULL)
 
     foreach($emails as $email) 
     {
-      $global_defs .= tabulate("$email\n",$tabulate);
+      $global_defs .= tabulate("$email",$tabulate);
     }
     
     $tabulate--;
 
-    $global_defs .= tabulate("}\n",$tabulate);
+    $global_defs .= tabulate("}",$tabulate);
 
   }
   // enable_traps
-  if ($enable_traps) $global_defs .= tabulate("enable_traps\n",$tabulate);
+  if ($enable_traps) $global_defs .= tabulate("enable_traps",$tabulate);
   
   
   $tabulate--;
   
-  $global_defs .= tabulate("}\n",$tabulate);
+  $global_defs .= tabulate("}",$tabulate);
   
   return $global_defs;
   
@@ -145,27 +147,27 @@ function generate_vrrp_script($server_id = NULL)
   {
     extract($row);
     
-    $vrrp_script .=tabulate("script $name {\n",$tabulate);
+    $vrrp_script .=tabulate("script $name {",$tabulate);
     
     $tabulate++;
 
     // script
-    if ($script) $vrrp_script .= tabulate("script \"$script\"\n",$tabulate);
+    if ($script) $vrrp_script .= tabulate("script \"$script\"",$tabulate);
 
     // interval
-    if (! is_null($interval)) $vrrp_script .= tabulate("interval $interval\n",$tabulate);
+    if (! is_null($interval)) $vrrp_script .= tabulate("interval $interval",$tabulate);
 
     // weight
-    if (! is_null($weight)) $vrrp_script .= tabulate("weight $weight\n",$tabulate);
+    if (! is_null($weight)) $vrrp_script .= tabulate("weight $weight",$tabulate);
 
     // fall
-    if ($fall) $vrrp_script .= tabulate("fall $fall\n",$tabulate);
+    if ($fall) $vrrp_script .= tabulate("fall $fall",$tabulate);
 
     // rise
-    if ($rise) $vrrp_script .= tabulate("rise $rise\n",$tabulate);
+    if ($rise) $vrrp_script .= tabulate("rise $rise",$tabulate);
 
     $tabulate--;
-    $vrrp_script .=tabulate("}\n",$tabulate);
+    $vrrp_script .=tabulate("}",$tabulate);
     
   }
 
@@ -196,7 +198,7 @@ function generate_track_script($virtual_router_id = NULL)
   // No lines
   if ( ! $res->num_rows ) return false;
 
-  $track_script .= tabulate("track script {\n",$tabulate);
+  $track_script .= tabulate("track_script {",$tabulate);
   
   $tabulate++;
   
@@ -206,16 +208,143 @@ function generate_track_script($virtual_router_id = NULL)
     
     if(! is_null($weight) ) $weight = "weight $weight";
     
-    $track_script .= tabulate("$name $weight\n",$tabulate);
+    $track_script .= tabulate("$name $weight",$tabulate);
 
   }
   
   $tabulate--;
-  $track_script .= tabulate("}\n",$tabulate);
+  $track_script .= tabulate("}",$tabulate);
   
   return $track_script;
 }
 
+// generate track_interface
+function generate_track_interface($virtual_router_id = NULL)
+{
+  global $mysqli;
+  global $tabulate;
+
+  $track_interface = "";
+  
+  if (!$virtual_router_id) return false;
+    
+  $sql = "select 
+            interface,
+            weight
+          from track_interface
+          where virtual_router_id = '$virtual_router_id'";
+          
+  // SQL Error
+  if (! $res = $mysqli->query($sql) ) return false;
+  
+  // No lines
+  if ( ! $res->num_rows ) return false;
+
+  $track_interface .= tabulate("track_interface {",$tabulate);
+  
+  $tabulate++;
+  
+  while ($row = $res->fetch_assoc())
+  {
+    extract($row);
+    
+    if(! is_null($weight) ) $weight = "weight $weight";
+    
+    $track_interface .= tabulate("$interface $weight",$tabulate);
+
+  }
+  
+  $tabulate--;
+  $track_interface .= tabulate("}",$tabulate);
+  
+  return $track_interface;
+}
+
+// generate ip_address
+function generate_ip_address($id = NULL, $type= NULL)
+{
+  global $mysqli;
+  global $tabulate;
+
+  $ip_address = "";
+  
+  if (!$id) return false;
+
+  // Get cluster_id from server
+  if ($type == 'static') {
+    $server_id = $id ;
+    $sql = "select cluster_id from server where lb_id='$server_id'";
+    
+    if (! $res = $mysqli->query($sql) ) return false;
+    if ( ! $res->num_rows ) return false;
+    
+    list($cluster_id) = $res->fetch_array();
+   
+  } else $virtual_router_id = $id ;
+  
+  $sql = "select 
+            inet6_ntoa(ip) as ip,
+            mask,
+            inet6_ntoa(broadcast) as broadcast,
+            dev,
+            scope,
+            label,
+            is_gateway
+          from ip_address ";
+          
+  if ($type == 'static') {
+    $sql .= "where cluster_id='$cluster_id' ";
+  } else {
+    $sql .= "where virtual_router_id = '$virtual_router_id' ";
+  }
+  
+  $sql .= "and is_disabled is null ";
+
+  if ($type == "excluded") {
+    $sql .= "and is_excluded is not null";
+  } else {
+    $sql .= "and is_excluded is null";
+  }
+    
+  // SQL Error
+  if (! $res = $mysqli->query($sql) ) return false;
+  
+  // No lines
+  if ( ! $res->num_rows ) return false;
+
+  switch($type) {
+    case 'excluded':
+      $ip_address .= tabulate("ip_address_excluded {",$tabulate);
+      break;
+      
+    case 'static':
+      $ip_address .= tabulate("static_ip_address {",$tabulate);
+      break;
+    default:
+      $ip_address .= tabulate("ip_address {",$tabulate);  
+  }
+  
+  $tabulate++;
+  
+  while ($row = $res->fetch_assoc())
+  {
+    extract($row);
+   
+    if($mask) $ip.= "/$mask";
+    if($broadcast) $ip .=" brd $broadcast";
+    if($dev) $ip .= " dev $dev";
+    if($scope) $ip .= " scope $scope";
+    if($label) $ip .= " label $label";
+   
+    $ip_address .= tabulate("$ip",$tabulate);
+
+  }
+  
+  $tabulate--;
+  $ip_address .= tabulate("}",$tabulate);
+  
+  return $ip_address;
+}
 
 function generate_vrrp_instance($virtual_router_id = NULL)
 {
@@ -262,58 +391,65 @@ function generate_vrrp_instance($virtual_router_id = NULL)
 
   extract($row);
     
-  $vrrp_instance .=tabulate("vrrp_instance $name {\n",$tabulate);
+  $vrrp_instance .=tabulate("vrrp_instance $name {",$tabulate);
   
   $tabulate++;
 
-  if ($virtual_router_id) $vrrp_instance .=tabulate("virtual_router_id $virtual_router_id\n",$tabulate);
+  if ($virtual_router_id) $vrrp_instance .=tabulate("virtual_router_id $virtual_router_id",$tabulate);
 
-  if ($use_vmac) $vrrp_instance .=tabulate("use vmac\n",$tabulate);
+  if ($use_vmac) $vrrp_instance .=tabulate("use vmac",$tabulate);
 
-  if ($native_ipv6) $vrrp_instance .=tabulate("native_ipv6\n",$tabulate);
+  if ($native_ipv6) $vrrp_instance .=tabulate("native_ipv6",$tabulate);
   
-  if ($interface) $vrrp_instance .=tabulate("interface $interface\n",$tabulate);
+  if ($interface) $vrrp_instance .=tabulate("interface $interface",$tabulate);
 
-  if ($dont_track_primary) $vrrp_instance .=tabulate("dont_track_primary\n",$tabulate);
+  if ($dont_track_primary) $vrrp_instance .=tabulate("dont_track_primary",$tabulate);
 
-  if ($mcast_src_ip) $vrrp_instance .=tabulate("mcast_src_ip $mcast_src_ip\n",$tabulate);
+  if ($mcast_src_ip) $vrrp_instance .=tabulate("mcast_src_ip $mcast_src_ip",$tabulate);
   
-  if ($lvs_sync_daemon_interface) $vrrp_instance .=tabulate("lvs_sync_daemon_interface $lvs_sync_daemon_interface\n",$tabulate);
+  if ($lvs_sync_daemon_interface) $vrrp_instance .=tabulate("lvs_sync_daemon_interface $lvs_sync_daemon_interface",$tabulate);
 
-  if ($garp_master_delay) $vrrp_instance .=tabulate("garp_master_delay $garp_master_delay\n",$tabulate);
+  if ($garp_master_delay) $vrrp_instance .=tabulate("garp_master_delay $garp_master_delay",$tabulate);
 
-  if ($advert_int) $vrrp_instance .=tabulate("advert_int $advert_int\n",$tabulate);
+  if ($advert_int) $vrrp_instance .=tabulate("advert_int $advert_int",$tabulate);
 
-  if ($nopreempt) $vrrp_instance .=tabulate("nopreempt\n",$tabulate);
+  if ($nopreempt) $vrrp_instance .=tabulate("nopreempt",$tabulate);
 
-  if ($preempt_delay) $vrrp_instance .=tabulate("preempt_delay $preempt_delay\n",$tabulate);
+  if ($preempt_delay) $vrrp_instance .=tabulate("preempt_delay $preempt_delay",$tabulate);
   
   if ($auth_type) {
-    $vrrp_instance .= tabulate("authentication\n",$tabulate);
+    $vrrp_instance .= tabulate("authentication",$tabulate);
     $tabulate++;
-    $vrrp_instance .= tabulate("auth_type $auth_type\n",$tabulate);
-    if ($auth_pass) $vrrp_instance .= tabulate("auth_pass $auth_pass\n",$tabulate);
+    $vrrp_instance .= tabulate("auth_type $auth_type",$tabulate);
+    if ($auth_pass) $vrrp_instance .= tabulate("auth_pass $auth_pass",$tabulate);
     $tabulate--;
-    $vrrp_instance .= tabulate("}\n",$tabulate);
+    $vrrp_instance .= tabulate("}",$tabulate);
   }
 
-  if ($notify_master) $vrrp_instance .=tabulate("notify_master \"$notify_master\"\n",$tabulate);
+  if ($notify_master) $vrrp_instance .=tabulate("notify_master \"$notify_master\"",$tabulate);
 
-  if ($notify_backup) $vrrp_instance .=tabulate("notify_backup \"$notify_backup\"\n",$tabulate);
+  if ($notify_backup) $vrrp_instance .=tabulate("notify_backup \"$notify_backup\"",$tabulate);
 
-  if ($notify_fault) $vrrp_instance .=tabulate("notify_fault \"$notify_fault\"\n",$tabulate);
+  if ($notify_fault) $vrrp_instance .=tabulate("notify_fault \"$notify_fault\"",$tabulate);
 
-  if ($notify_stop) $vrrp_instance .=tabulate("notify_stop \"$notify_stop\"\n",$tabulate);
+  if ($notify_stop) $vrrp_instance .=tabulate("notify_stop \"$notify_stop\"",$tabulate);
 
-  if ($notify) $vrrp_instance .=tabulate("notify \"$notify\"\n",$tabulate);
+  if ($notify) $vrrp_instance .=tabulate("notify \"$notify\"",$tabulate);
 
-  if ($smtp_alert) $vrrp_instance .=tabulate("smtp_alert\n",$tabulate);
+  if ($smtp_alert) $vrrp_instance .=tabulate("smtp_alert",$tabulate);
 
+  // IP address
+  $vrrp_instance .= generate_ip_address($virtual_router_id);
+  $vrrp_instance .= generate_ip_address($virtual_router_id, 'excluded');
+
+  // track interface
+  $vrrp_instance .= generate_track_interface($virtual_router_id);
+  
   // track script
   $vrrp_instance .= generate_track_script($virtual_router_id);
 
   $tabulate--;
-  $vrrp_instance .=tabulate("}\n",$tabulate);
+  $vrrp_instance .=tabulate("}",$tabulate);
   
   
   return $vrrp_instance;
@@ -352,6 +488,42 @@ function generate_vrrp_instances ($server_id = NULL)
   
   return $vrrp_instances;
 }
+
+// VRRP Sync group
+function generate_vrrp_sync_group ($server_id = NULL)
+{
+  global $mysqli;
+  global $tabulate;
+
+  $vrrp_sync_group = "";
+  
+  if (!$server_id) return false;
+  
+  // Select
+  $sql = "select 
+            virtual_router_id 
+          from vrrp_instance v, server s 
+          where 
+            s.cluster_id = v.cluster_id
+          and lb_id = '$server_id'";
+
+  // SQL Error
+  if (! $res = $mysqli->query($sql) ) return false;
+  
+  
+  // No lines
+  if ( ! $res->num_rows ) return false;
+  
+  while ($row = $res->fetch_assoc() ) 
+  {
+    extract($row);
+    
+    $vrrp_instances .= generate_vrrp_instance($virtual_router_id);
+  }
+  
+  return $vrrp_instances;
+}
+
 
 ?> 
 
