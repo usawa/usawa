@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost:3306
--- Généré le: Ven 05 Avril 2013 à 16:18
+-- Généré le: Ven 12 Avril 2013 à 21:00
 -- Version du serveur: 5.6.10
 -- Version de PHP: 5.4.12
 
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `cluster` (
   `last_updated` datetime DEFAULT NULL,
   PRIMARY KEY (`cluster_id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='List of clusters' AUTO_INCREMENT=10 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='List of clusters' AUTO_INCREMENT=11 ;
 
 -- --------------------------------------------------------
 
@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS `ip_address` (
   `dev` varchar(255) DEFAULT NULL COMMENT 'device',
   `scope` enum('site','link','host','nowhere','global') DEFAULT NULL COMMENT 'scope',
   `label` varchar(255) DEFAULT NULL,
+  `is_excluded` tinyint(1) DEFAULT NULL,
   `is_gateway` tinyint(1) DEFAULT NULL COMMENT 'true if VIP GW',
   `is_disabled` tinyint(1) DEFAULT NULL COMMENT 'true if excluded from virtual or static IP address',
   `cluster_id` smallint(5) unsigned DEFAULT NULL,
@@ -134,7 +135,7 @@ CREATE TABLE IF NOT EXISTS `server` (
   PRIMARY KEY (`lb_id`),
   UNIQUE KEY `name` (`name`),
   KEY `cluster_id` (`cluster_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='List of all load balancers' AUTO_INCREMENT=22 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='List of all load balancers' AUTO_INCREMENT=24 ;
 
 --
 -- Déclencheurs `server`
@@ -281,7 +282,7 @@ CREATE TABLE IF NOT EXISTS `vrrp_script` (
   `rise` smallint(5) unsigned DEFAULT NULL COMMENT 'required number of successes for OK switch',
   PRIMARY KEY (`script_id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Scripts to be executed periodically' AUTO_INCREMENT=1 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Scripts to be executed periodically' AUTO_INCREMENT=3 ;
 
 -- --------------------------------------------------------
 
@@ -300,7 +301,7 @@ CREATE TABLE IF NOT EXISTS `vrrp_sync_group` (
   `cluster_id` smallint(5) unsigned DEFAULT NULL,
   PRIMARY KEY (`sync_group_id`),
   KEY `cluster_id` (`cluster_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='VRRP Sync group' AUTO_INCREMENT=5 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='VRRP Sync group' AUTO_INCREMENT=6 ;
 
 --
 -- Contraintes pour les tables exportées
@@ -312,6 +313,12 @@ CREATE TABLE IF NOT EXISTS `vrrp_sync_group` (
 ALTER TABLE `ip_address`
   ADD CONSTRAINT `ip_address_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `cluster` (`cluster_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `ip_address_ibfk_2` FOREIGN KEY (`virtual_router_id`) REFERENCES `vrrp_instance` (`virtual_router_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Contraintes pour la table `network_details`
+--
+ALTER TABLE `network_details`
+  ADD CONSTRAINT `network_details_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `cluster` (`cluster_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Contraintes pour la table `route`
