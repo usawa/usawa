@@ -28,6 +28,8 @@ function generate_configuration($server_id = NULL)
 
   $configuration .= generate_vrrp_script($server_id) ;
   
+  $configuration .= generate_vrrp_sync_group($server_id) ;
+  
   $configuration .= generate_vrrp_instances($server_id) ;
   
   return $configuration;
@@ -499,17 +501,23 @@ function generate_vrrp_sync_group ($server_id = NULL)
   
   if (!$server_id) return false;
   
-  // Select
+  // Select vrrp sync group 
   $sql = "select 
-            virtual_router_id 
-          from vrrp_instance v, server s 
+            g.sync_group_id, 
+            g.name as group_name, 
+            g.notify_master,
+            g.notify_backup,
+            g.notify_fault,
+            g.notify,
+            g.smtp_alert
+          from 
+            vrrp_sync_group g, server s
           where 
-            s.cluster_id = v.cluster_id
-          and lb_id = '$server_id'";
+            g.cluster_id = s.cluster_id
+            and s.lb_id = '$server_id'";
 
   // SQL Error
   if (! $res = $mysqli->query($sql) ) return false;
-  
   
   // No lines
   if ( ! $res->num_rows ) return false;
@@ -518,10 +526,36 @@ function generate_vrrp_sync_group ($server_id = NULL)
   {
     extract($row);
     
-    $vrrp_instances .= generate_vrrp_instance($virtual_router_id);
+    // Get VRRP instances in this group
+    $sql = "select name as vrrp_name from vrrp_instance where sync_group_id='$sync_group_id'";
+    
+    if ( ! $res_v = $mysqli->query($sql) ) return false ;
+    
+    // no vrrp instances in this group => go to next
+    if (! $res_v->num_rows ) continue;
+    
+    $vrrp_sync_group .= tabulate("vrrp_sync_group $group_name {", $tabulate );
+    $tabulate++;
+
+    $vrrp_sync_group .= tabulate("group {", $tabulate );
+    $tabulate++;
+
+    while ( $row = $res_v->fetch_assoc() ) 
+    {
+      extract($row);
+      $vrrp_sync_group .= tabulate("$vrrp_name", $tabulate );
+      
+    }
+    
+    $tabulate--;
+    $vrrp_sync_group .= tabulate( "}" , $tabulate );
+
+    $tabulate--;
+    $vrrp_sync_group .= tabulate( "}" , $tabulate );
+    
   }
   
-  return $vrrp_instances;
+  return $vrrp_sync_group;
 }
 
 
