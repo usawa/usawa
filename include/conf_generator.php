@@ -550,6 +550,16 @@ function generate_vrrp_sync_group ($server_id = NULL)
     $tabulate--;
     $vrrp_sync_group .= tabulate( "}" , $tabulate );
 
+    if ($notify_master) $vrrp_instance .=tabulate("notify_master \"$notify_master\"",$tabulate);
+
+    if ($notify_backup) $vrrp_instance .=tabulate("notify_backup \"$notify_backup\"",$tabulate);
+
+    if ($notify_fault) $vrrp_instance .=tabulate("notify_fault \"$notify_fault\"",$tabulate);
+
+    if ($notify) $vrrp_instance .=tabulate("notify \"$notify\"",$tabulate);
+
+    if ($smtp_alert) $vrrp_instance .=tabulate("smtp_alert",$tabulate);
+
     $tabulate--;
     $vrrp_sync_group .= tabulate( "}" , $tabulate );
     
