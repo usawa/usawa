@@ -55,7 +55,11 @@ class SSH {
 		$data .= $buf; 
 		} 
 		fclose($stream); 
-		return explode("\n",$data);
+		
+		$array = explode("\n",$data);
+		array_pop($array);
+		
+		return $array;
 	} 
 	public function disconnect() { 
 		$this->exec('echo "EXITING" && exit;'); 
@@ -115,13 +119,13 @@ function execute_command_ssh($server_id,$action, $info) {
 		put_error(1,"Can't connect to server ".$info['name'].". Please check server ssh access.");
 	}
 	
-	print_r( $ssh->exec('/sbin/ip a s') );
 	
 	if(!in_array($action,$ACTION_ON_NODE)) {
                 echo "<p>OTHER COMMAND</p>" ;
         }
         else{
-		echo "<p>COMMAND SSH - ssh2_connect function</p>";
+        	print_r( $ssh->exec('/sbin/ip a s') );
+
 	}
 }
 
