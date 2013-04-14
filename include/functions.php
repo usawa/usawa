@@ -37,11 +37,6 @@ class SSH {
 			return false;
 		} 
 
-/*		$fingerprint = ssh2_fingerprint($this->connection, SSH2_FINGERPRINT_MD5 | SSH2_FINGERPRINT_HEX); 		
-		if (strcmp($this->ssh_server_fp, $fingerprint) !== 0) { 
-			throw new Exception('Unable to verify server identity!'); 
-		} 
-*/
 		if (! ssh2_auth_pubkey_file($this->connection, $this->ssh_auth_user, $this->ssh_auth_pub, $this->ssh_auth_priv, $this->ssh_auth_pass) )
 		{
 			return false;
