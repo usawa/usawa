@@ -1653,11 +1653,11 @@ switch($action) {
 
 require("include/conf_generator.php");
 
-echo "<pre>";
+$keepalived_conf= generate_configuration(22);
 
-echo generate_configuration(22);
 
-echo "</pre>";
+
+require_once("include/functions.php");
 
 // table_ip_adresses('virtual',1);
 
