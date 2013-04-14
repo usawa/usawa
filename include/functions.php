@@ -60,9 +60,9 @@ class SSH {
 		array_pop($array);
 		
 		return $array;
-	} 
+	}
+	
 	public function disconnect() { 
-		$this->exec('echo "EXITING" && exit;'); 
 		$this->connection = null; 
 	} 
 	public function __destruct() { 
