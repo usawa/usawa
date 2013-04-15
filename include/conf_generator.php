@@ -585,6 +585,15 @@ function generate_vrrp_sync_group ($server_id = NULL)
   return $vrrp_sync_group;
 }
 
+function write_file($path, $content)
+{
+	if(! $fd = fopen($path , 'w') ) return false ;
 
+	fwrite( $fd , $content);
+         
+	fclose($fd);
+	
+	return true;
+}
 ?> 
 

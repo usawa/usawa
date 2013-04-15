@@ -1651,13 +1651,26 @@ switch($action) {
     break;
 }
 
+require_once("include/functions.php");
 require("include/conf_generator.php");
 
 $keepalived_conf= generate_configuration(22);
 
 
+$tmpfname = tempnam("/tmp", "Keepalived_");
 
-require_once("include/functions.php");
+if (! write_file($tmpfname,$keepalived_conf) )
+{
+	echo "erreur";
+}
+
+if  ( !copy_keepalived_conf_to_server(22,$tmpfname) ) echo "ERREUR";
+
+unlink($tmpfname);
+
+
+
+// $r_array= execute_command(22,'/sbin/ip a s');
 
 // table_ip_adresses('virtual',1);
 

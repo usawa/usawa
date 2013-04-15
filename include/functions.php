@@ -33,11 +33,11 @@ class SSH {
 	}
 	
 	public function connect() { 
-		if (!($this->connection = ssh2_connect($this->ssh_host, $this->ssh_port ,array('hostkey'=>'ssh-rsa')))) { 
+		if (!($this->connection = @ssh2_connect($this->ssh_host, $this->ssh_port ,array('hostkey'=>'ssh-rsa')))) { 
 			return false;
 		} 
 
-		if (! ssh2_auth_pubkey_file($this->connection, $this->ssh_auth_user, $this->ssh_auth_pub, $this->ssh_auth_priv, $this->ssh_auth_pass) )
+		if (! @ssh2_auth_pubkey_file($this->connection, $this->ssh_auth_user, $this->ssh_auth_pub, $this->ssh_auth_priv, $this->ssh_auth_pass) )
 		{
 			return false;
 		}
@@ -46,6 +46,9 @@ class SSH {
 	} 
 
 	public function exec($cmd) { 
+
+		if( ! $this->connection) return false ;
+		
 		if (!($stream = ssh2_exec($this->connection, $cmd))) { 
 			return false;
 		}
@@ -62,6 +65,18 @@ class SSH {
 		return $array;
 	}
 	
+	public function copy_to($from, $to) {
+		if( ! $this->connection) return false ;
+		
+				
+		if ( ! ssh2_scp_send( $this->connection, $from, $to ) )
+		{
+			return false;
+		}
+		
+		return true ;
+	}
+		
 	public function disconnect() { 
 		$this->connection = null; 
 	} 
@@ -82,7 +97,8 @@ function getinfo_server ($serverid) {
 			ssh_passphrase,
 			ssh_public_key_path,
 			ssh_private_key_path,
-			service_path 
+			service_path,
+			conf_path
 		FROM server WHERE lb_id = $serverid ;" ;
 	$res = $mysqli->query($sql) ;
 	if(!$res)
@@ -104,33 +120,42 @@ function getinfo_server ($serverid) {
 					'pass' => $ssh_passphrase,
 					'pub_key' => $ssh_public_key_path,
 					'priv_key' => $ssh_private_key_path,
-					"service_path" => $service_path );
+					'service_path' => $service_path,
+					'conf_path' => ($conf_path?$conf_path:KEEPALIVED_CONF_DEFAULT_PATH) );
 			return($array) ;
     		}
         }
+        
+        return false; ;
 }
 
 function execute_command_ssh($server_id,$action, $info) {
 	global $ACTION_ON_NODE ;
 	
+	$return_array = null ;
+	
 	$ssh = new SSH($info['ip_address'], $info['user'], $info['pub_key'], $info['priv_key'], $info['pass'] ) ;
 	
 	if (! $ssh->connect() ) {
 		put_error(1,"Can't connect to server ".$info['name'].". Please check server ssh access.");
+		return false ;
 	}
 	
 	
-	if(!in_array($action,$ACTION_ON_NODE)) {
-                echo "<p>OTHER COMMAND</p>" ;
-        }
-        else{
-        	print_r( $ssh->exec('/sbin/ip a s') );
+	if(in_array($action,$ACTION_ON_NODE)) {
+		echo "BUILD COMMAND LINE FOR SERVICE HERE";
+	}
 
-	}
+	$return_array = $ssh->exec($action) ;
+	
+	return $return_array;
 }
 
 function execute_command_local($server_id,$action,$info) {
 	global $ACTION_ON_NODE ;
+	
+	$return_array = null ;
+	
         if(!in_array($action,$ACTION_ON_NODE))
 	{
                 echo "<p>OTHER COMMAND</p>" ;
@@ -139,9 +164,11 @@ function execute_command_local($server_id,$action,$info) {
 	{
         	echo "<p>COMMAND LOCAL - exec function</p>";
 	}
+	
+	return $return_array;
 }
 
-function execute_command($server_id,$action, $info = NULL){
+function execute_command($server_id,$action, $info = NULL) {
 	if ( ! $info ) {
 		$info = getinfo_server($server_id);
 	}
@@ -162,7 +189,7 @@ function keepalived_action_on_node($server_id,$action)
 {
 	$info = getinfo_server($server_id);
 	
-	execute_command($server_id, $action, $info);
+	return execute_command($server_id, $action, $info);
 }
 
 function keepalived_action_on_cluster($cluster_id,$action)
@@ -172,10 +199,44 @@ function keepalived_action_on_cluster($cluster_id,$action)
 	$res = $mysqli->query($sql) ;
 	while($row = $res->fetch_assoc())
 	{
-		keepalived_action_on_node($row['lb_id'],$action);
+		return keepalived_action_on_node($row['lb_id'],$action);
 	}
 }
 
-#MAIN
-keepalived_action_on_node('22','start');
+function copy_keepalived_conf_to_server($server_id, $path, $info = null) {
+
+	if ( ! $info ) {
+		$info = getinfo_server($server_id);
+	}
+			
+	if ( $info['access'] == 'ssh' )
+	{
+		$ssh = new SSH($info['ip_address'], $info['user'], $info['pub_key'], $info['priv_key'], $info['pass'] ) ;
+	
+		if (! $ssh->connect() ) {
+			put_error(1,"Can't connect to server ".$info['name'].". Please check server ssh access.");
+			return false ;
+		}
+
+		if (! $ssh->copy_to( $path, $info['conf_path']) ) 
+		{
+			put_error(1,"Can't copy file to server ".$info['name'].". Please check server ssh access.");
+			return false ;
+		}
+		
+	}
+	
+	if ( $info['access'] == 'local' )
+	{
+		if (! copy($path, $info['conf_path'] ) )
+		{
+			put_error(1,"Can't copy file to server ".$info['name'].".");
+			return false;
+		}
+	}
+	
+	return true ; 
+	
+}
+
 ?>

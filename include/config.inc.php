@@ -26,6 +26,7 @@ define ('VRRP_DEFAULT_SCRIPT_WEIGHT', 2 );
 define ('VRRP_DEFAULT_SCRIPT_FALL', 1 );
 define ('VRRP_DEFAULT_SCRIPT_RISE', 1 );
 
+define ('KEEPALIVED_CONF_DEFAULT_PATH', '/etc/keepalived/keepalived.conf');
 
 // Access Backend list
 $ACCESS_BACKEND_LIST = array ( 'local' => 'local', 'ssh' => 'ssh' );
