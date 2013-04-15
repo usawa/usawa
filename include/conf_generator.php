@@ -333,14 +333,14 @@ function generate_ip_address($id = NULL, $type= NULL)
 
   switch($type) {
     case 'excluded':
-      $ip_address .= tabulate("ip_address_excluded {",$tabulate);
+      $ip_address .= tabulate("virtual_ipaddress_excluded {",$tabulate);
       break;
       
     case 'static':
-      $ip_address .= tabulate("static_ip_address {",$tabulate);
+      $ip_address .= tabulate("static_ipaddress {",$tabulate);
       break;
     default:
-      $ip_address .= tabulate("ip_address {",$tabulate);  
+      $ip_address .= tabulate("virtual_ipaddress {",$tabulate);  
   }
   
   $tabulate++;

@@ -208,7 +208,11 @@ function copy_keepalived_conf_to_server($server_id, $path, $info = null) {
 	if ( ! $info ) {
 		$info = getinfo_server($server_id);
 	}
-			
+	
+	$distant_path = $info['conf_path'] ;
+
+	$distant_path_bkp = $distant_path.strftime("%F_%T");
+	
 	if ( $info['access'] == 'ssh' )
 	{
 		$ssh = new SSH($info['ip_address'], $info['user'], $info['pub_key'], $info['priv_key'], $info['pass'] ) ;
@@ -218,6 +222,10 @@ function copy_keepalived_conf_to_server($server_id, $path, $info = null) {
 			return false ;
 		}
 
+		// backup old conf
+		$ssh->exec("test -f $distant_path && cp $distant_path $distant_path_bkp");
+		
+		// Copy
 		if (! $ssh->copy_to( $path, $info['conf_path']) ) 
 		{
 			put_error(1,"Can't copy file to server ".$info['name'].". Please check server ssh access.");
