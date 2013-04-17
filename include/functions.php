@@ -254,7 +254,7 @@ function check_server_access($server_id = null)
         if (! $server_id ) return false ;
         
         // prepare query
-        $sql = "select inet6_ntoa(ip_address) as ip_address from server where lb_id='$server_id'";
+        $sql = "select inet6_ntoa(ip_address) as ip_address, access_backend from server where lb_id='$server_id'";
 
         // execute query
         $res = $mysqli->query($sql);
@@ -267,12 +267,17 @@ function check_server_access($server_id = null)
 
         extract($row);
 
-        // Test socket on port 22 (because no timeout for ssh2_connect)
-        $fp = @fsockopen("tcp://$ip_address", 22 , $errno, $errstr, 5);
-        if ($fp) {
-          fclose($fp);
-          return true;
-        }
+	if($access_backend == 'ssh')
+	{
+		// Test socket on port 22 (because no timeout for ssh2_connect)
+		$fp = @fsockopen("tcp://$ip_address", 22 , $errno, $errstr, 5);
+		if ($fp) {
+			fclose($fp);
+			return true;
+		} return false ;
+			
+	}
+	if ($access_backend == 'local' ) return true ;
 
         return false ;
 }
