@@ -302,9 +302,16 @@ function update_server()
     if (! $mysqli->query($sql) ) 
     {
       put_error(1,"SQL Error. Can't insert server $name.");
+    } else {
+	$lb_id = $mysqli->insert_id;
     }
   }
 
+  // check network adapters
+  if ($cluster_id) {
+	$return = execute_command($lb_id,"/sbin/ip -o -f inet addr show scope global primary | awk -v old='' '\$2!=old { print \$2,\$4 ; old = \$2 }'");
+  }
+  
   redirect_to($_SERVER['HTTP_REFERER']);
 }
 
@@ -1654,6 +1661,7 @@ switch($action) {
 require_once("include/functions.php");
 require("include/conf_generator.php");
 
+/*
 $keepalived_conf= generate_configuration(22);
 
 
@@ -1668,9 +1676,10 @@ if  ( !copy_keepalived_conf_to_server(22,$tmpfname) ) echo "ERREUR";
 
 unlink($tmpfname);
 
+*/
 
+update_network_information(22);
 
-// $r_array= execute_command(22,'/sbin/ip a s');
 
 // table_ip_adresses('virtual',1);
 

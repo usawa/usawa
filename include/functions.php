@@ -247,4 +247,120 @@ function copy_keepalived_conf_to_server($server_id, $path, $info = null) {
 	
 }
 
+// Check if a server is accessible via ssh
+function check_server_access($server_id = null)
+{
+	global $mysqli ;
+        if (! $server_id ) return false ;
+        
+        // prepare query
+        $sql = "select inet6_ntoa(ip_address) as ip_address from server where lb_id='$server_id'";
+
+        // execute query
+        $res = $mysqli->query($sql);
+
+        if( ! $res ) return false ;
+	
+	if ( ! $res->num_rows ) return false ;
+	
+        $row = $res->fetch_array();
+
+        extract($row);
+
+        // Test socket on port 22 (because no timeout for ssh2_connect)
+        $fp = @fsockopen("tcp://$ip_address", 22 , $errno, $errstr, 5);
+        if ($fp) {
+          fclose($fp);
+          return true;
+        }
+
+        return false ;
+}
+
+// Get iface/network information for a server and update database
+function update_network_information($server_id = null)
+{
+	global $mysqli ;
+	if (! $server_id ) return false ;
+	
+	// no access
+	if (! check_server_access($server_id ) ) return false ;
+	
+	// Get cluster_id
+	$sql = "select cluster_id from server where lb_id ='$server_id'";
+	$res = $mysqli->query($sql);
+	list($cluster_id) = $res->fetch_array();
+	
+	// Not in cluster, nothing to do
+	if( ! $cluster_id) return false ;
+	
+	// IPv4
+	if ( ! $net_array = execute_command($server_id,"/sbin/ip -o -f inet addr show scope global primary | awk -v old='' '\$2!=old && \$2!=\"lo\" { print \$2,\$4 ; old=\$2 }'") ) return false ;
+
+	$iface_list = null ;
+	foreach ($net_array as $net_info)
+	{
+		list ($iface, $cidr ) = explode(' ',$net_info);
+		list ($ip, $netmask ) = explode ('/', $cidr);
+
+		
+		$ipLong = ip2long($ip);
+
+		$maskBinStr =str_repeat("1", $netmask ) . str_repeat("0", 32-$netmask );
+		$ipMaskLong = bindec( $maskBinStr );
+
+		$inverseMaskBinStr = str_repeat("0", $netmask ) . str_repeat("1",  32-$netmask ); //inverse mask
+		$inverseIpMaskLong = bindec( $inverseMaskBinStr );
+
+		$network = $ipLong & $ipMaskLong ;  
+                $start = $network+1 ;
+		$end = ($network | $inverseIpMaskLong) -1 ;
+
+		$ip_network = long2ip($network) ;
+		$ip_start = long2ip($start) ;
+		$ip_end = long2ip($end) ;
+		
+		$iface_list[] = "'$iface'" ;
+		
+		$sql = "insert into network_details (cluster_id, interface, ipv4_address, ipv4_netmask)
+			values ('$cluster_id','$iface',inet6_aton('$ip'),'$netmask')
+			on duplicate key update
+			ipv4_address = inet6_aton('$ip_network'),
+			ipv4_netmask = '$netmask'";
+		$mysqli->query($sql);
+	}
+	
+	// delete ifaces not in list
+	if (count($iface_list) )
+	{
+		$not_in = implode(',',$iface_list);
+		$sql = "delete from network_details where cluster_id='$cluster_id' and interface not in ($not_in)";
+		$mysqli->query($sql);
+	} else {
+		// no network in server : delete all
+		$sql = "delete from network_details where cluster_id='$cluster_id'";
+		$mysqli->exec($sql);
+	}
+	
+	
+}
+
+function getIpRang(  $cidr) {
+
+   list($ip, $mask) = explode('/', $cidr);
+ 
+   $maskBinStr =str_repeat("1", $mask ) . str_repeat("0", 32-$mask );      //net mask binary string
+   $inverseMaskBinStr = str_repeat("0", $mask ) . str_repeat("1",  32-$mask ); //inverse mask
+   
+   $ipLong = ip2long( $ip );
+   $ipMaskLong = bindec( $maskBinStr );
+   $inverseIpMaskLong = bindec( $inverseMaskBinStr );
+   $netWork = $ipLong & $ipMaskLong;  
+
+   $start = $netWork+1;//去掉网络号 ,ignore network ID(eg: 192.168.1.0)
+  
+   $end = ($netWork | $inverseIpMaskLong) -1 ; //去掉广播地址 ignore brocast IP(eg: 192.168.1.255)
+   return array( $start, $end );
+}
+
 ?>
