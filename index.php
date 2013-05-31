@@ -59,7 +59,8 @@ function table_cluster($cluster_id = NULL)
     <thead>
     <tr>
       <th>Name</th>
-      <th>Servers</th>
+      <th>Nodes</th>
+      <th>LVS</th>
       <th>SMTP Server</th>
       <th>SMTP Timeout</th>
       <th>Source Email</th>
@@ -77,10 +78,19 @@ function table_cluster($cluster_id = NULL)
   while ( $row = $res->fetch_assoc() )
   {
     extract($row);
+    
+    $sql_virtual_servers = "select count(virtual_server_id) as vs_count from virtual_server where cluster_id='$cluster_id'";
+    $res_virtual_servers = $mysqli->query($sql_virtual_servers);
+    extract($res_virtual_servers->fetch_array());
 ?>
     <tr>
       <td><a href="?cluster_id=<?php echo $cluster_id ?>"><?php echo $name ?></a></td>
-      <td><?php echo $servers?$servers:"-"?></td>      
+      <td><?php echo $servers?$servers:"-"?></td>
+      <td>
+	<?php echo $vs_count ?>
+	<a style="float:right" href="?action=virtual_servers&cluster_id=<?php echo $cluster_id ?>"><img src="icons/building.png" title="Virtual Servers" /></a>&nbsp;        
+
+      </td>
       <td><?php echo $smtp_server?$smtp_server:"-" ?></td>
       <td><?php echo $smtp_connect_timeout?$smtp_connect_timeout:"-" ?></td>
       <td><?php echo $notification_email_from?$notification_email_from:"-" ?></td>
@@ -104,7 +114,7 @@ function table_cluster($cluster_id = NULL)
   </tbody>
   <tfoot>
     <tr>
-      <td colspan="7">&nbsp;</td>
+      <td colspan="8">&nbsp;</td>
       <td>
         <a href="form_cluster.php" rel="modal:open"><img src="icons/link_add.png" title="add cluster" /></a></td>
       </td>
@@ -1546,6 +1556,57 @@ function delete_ip_address($ip_address = NULL)
     Virtual Server functions
   --------------------------------------------------------------
 */
+function update_virtual_server()
+{
+  global $mysqli;
+  
+  extract($_POST);
+  
+  // Check lvs_type
+  switch($lvs_type) {
+	case "ip":
+		$_POST['fwmark'] = null ;
+		$_POST['group'] = null ;
+		break;
+	case "group":
+		$_POST['fwmark'] = null ;
+		$_POST['ip'] = null ;
+		$_POST['port'] = null ;
+		$_POST['protocol'] = null ;
+		break;
+		
+	case "fwmark":
+		$_POST['group'] = null ;
+		$_POST['ip'] = null ;
+		$_POST['port'] = null ;
+		$_POST['protocol'] = null ;
+		break;
+  }
+  
+  build_default_fields($virtual_server_dictionnary);
+  // state/priority arrays : update vrrp details per server
+  if($state)
+  {
+    foreach($state as $lb_id => $initial_state)
+    {
+      $initial_priority=$priority[$lb_id];
+      
+      // Initial priority 0-255
+      $initial_priority = min($initial_priority,255) ;
+      $initial_priority = max($initial_priority,0);
+      
+      $sql = "insert into vrrp_details_per_server 
+                (lb_id,virtual_router_id,state,priority)
+                values( '$lb_id', '$virtual_router_id', '$initial_state', '$initial_priority' )
+                on duplicate key update state='$initial_state', priority='$initial_priority'";
+  
+      $mysqli->query($sql);      
+      
+    }
+  }
+  redirect_to($_SERVER['HTTP_REFERER']);
+}
+
 function table_virtual_server($cluster_id = NULL)
 {
   global $mysqli;
@@ -1596,11 +1657,11 @@ function table_virtual_server($cluster_id = NULL)
 	echo $mysqli->error;
 	exit(1);
 	
-    put_error(1,"SQL Error. Can't display servers");
+    put_error(1,"SQL Error. Can't display Linux Virtual Servers");
     return false;
   }
   
-  $title = "Manage linux Virtual Servers ";
+  $title = "Manage Virtual Servers ";
   if ($cluster_name)
   {
     $title .= "for cluster $cluster_name";
@@ -1757,7 +1818,7 @@ switch($action) {
     if($f_type == "server") form_server($lb_id, $cluster_id);
     break;
   case "virtual_servers":
-    table_virtual_server();
+    table_virtual_server($cluster_id);
     break;
   case "servers":
     table_server();

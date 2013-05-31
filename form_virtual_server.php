@@ -7,6 +7,8 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
 {
   global $mysqli;
   
+  $lvs_type="ip";
+  
   if ( $virtual_server_id ) {
   
     $sql = "select  inet6_ntoa(ip_address) as ip_address, 
@@ -42,6 +44,10 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
   $sql = "select cluster_id, name from cluster where 1";
   $res_cluster = $mysqli->query($sql) ;
 
+  if(@$ip_address) $lvs_type="ip";
+  if(@$group) $lvs_type="group";
+  if(@$fwmark) $lvs_type="fwmark";
+
 ?>
 
   <form name = "virtual_server_form" method="POST">
@@ -76,17 +82,35 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
 
         
 <!--     fwmark, group -->
-
-    <div><label for="ip_address">IP Address</label> <input type="text" maxlength="255" name="ip_address" value="<?php echo @$ip_address?$ip_address:"" ?>" /></div>
-
-    <div><label for="port">Port</label> <input type="text" maxlength="5" name="port" value="<?php echo @$port?$port:"" ?>" /></div>
-
     <div>
-      <label for="protocol">Protocol</label>
-      <select name="protocol">
-        <option value="TCP" <?php echo (@$protocol == 'TCP')?'selected="selected"':'' ?>>TCP</option>
-        <option value="UDP" <?php echo (@$protocol == 'UDP')?'selected="selected"':'' ?>>UDP</option>
-      </select>
+      <label for="method">LVS Method</label>
+        <input type="radio" onclick="$('#vs_ip').show(); $('#vs_group').hide(); $('#vs_fwmark').hide(); $.modal.resize();" name="lvs_type" value="ip_port" <?php echo $lvs_type=='ip'?'checked="checked"':"" ?>/>IP
+        <input type="radio" onclick="$('#vs_ip').hide(); $('#vs_group').show(); $('#vs_fwmark').hide(); $.modal.resize();" name="lvs_type" value="group" <?php echo $lvs_type=='group'?'checked="checked"':"" ?>/>Group
+        <input type="radio" onclick="$('#vs_ip').hide(); $('#vs_group').hide(); $('#vs_fwmark').show(); $.modal.resize();" name="lvs_type" value="fwmark" <?php echo $lvs_type=='fwmark'?'checked="checked"':"" ?>/>FWMark
+    </div>
+
+<!--     protocol:ip:port -->
+    <div id="vs_ip" <?php echo $lvs_type=='ip'?'style="display:block"':'style="display:none"' ?>>
+	<div><label for="ip_address">IP Address</label> <input type="text" maxlength="255" name="ip_address" value="<?php echo @$ip_address?$ip_address:"" ?>" /></div>
+
+	<div><label for="port">Port</label> <input type="text" maxlength="5" name="port" value="<?php echo @$port?$port:"" ?>" /></div>
+	<div>
+		<label for="protocol">Protocol</label>
+		<select name="protocol">
+			<option value="TCP" <?php echo (@$protocol == 'TCP')?'selected="selected"':'' ?>>TCP</option>
+			<option value="UDP" <?php echo (@$protocol == 'UDP')?'selected="selected"':'' ?>>UDP</option>
+		</select>
+	</div>
+    </div>
+    
+<!--     group -->
+    <div id="vs_group" <?php echo $lvs_type=='group'?'style="display:block"':'style="display:none"' ?>>
+	<div><label for="vs_group">Group</label> <input type="text" maxlength="5" name="group" value="<?php echo @$group?$group:"" ?>" /></div>    
+    </div>
+
+<!--     fwmark -->
+    <div id="vs_fwmark" <?php echo $lvs_type=='fwmark'?'style="display:block"':'style="display:none"' ?>>
+	<div><label for="vs_fwmark">Firewall Mark</label> <input type="text" maxlength="5" name="fwmark" value="<?php echo @$fwmark?$fwmark:"" ?>" /></div>    
     </div>
 
     <div>
@@ -170,6 +194,10 @@ var validator = new FormValidator('virtual_server_form', [{
     }, {
     name: 'port',
     display: 'Port',
+    rules: 'integer|greater_than[-1]|less_than[65536]'
+}, {
+    name: 'fwmark',
+    display: 'Firwall Mark',
     rules: 'integer|greater_than[-1]|less_than[65536]'
 }, {
     name: 'persistence_timeout',
