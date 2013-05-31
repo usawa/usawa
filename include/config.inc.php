@@ -48,6 +48,10 @@ $vrrp_instance_dictionnary = array ('name', 'use_vmac', 'native_ipv6', 'interfac
 $ip_address_dictionnary = array ('ip', 'mask', 'broadcast', 'dev', 'scope', 'label', 'is_gateway', 'is_disabled', 'cluster_id', 'virtual_router_id' );
 $vrrp_sync_group_dictionnary = array ('name', 'notify_master', 'notify_backup', 'notify_fault', 'notify', 'smtp_alert', 'cluster_id');
 $vrrp_script_dictionnary = array('name','script','interval','weight','fall','rise');
+$virtual_server_dictionnary = array('ip_address', 'port','fwmark', 'group', 'delay_loop', 'lvs_sched', 'lvs_method',
+                    'persistence_timeout', 'persistence_granularity', 'protocol', 'ha_suspend', 'virtualhost',
+                    'alpha', 'omega', 'quorum', 'hysteresis', 'quorum_up', 'quorum_down', 'sorry_server_ip', 
+                    'sorry_server_port', 'cluster_id');
 
 setlocale(LC_ALL, LOCALE);
 date_default_timezone_set(TIMEZONE);

@@ -1541,6 +1541,128 @@ function delete_ip_address($ip_address = NULL)
   redirect_to($_SERVER['HTTP_REFERER']);
 }
 
+/* 
+  --------------------------------------------------------------
+    Virtual Server functions
+  --------------------------------------------------------------
+*/
+function table_virtual_server($cluster_id = NULL)
+{
+  global $mysqli;
+  $cluster_name = NULL;
+  
+  // cluster name
+  if ($cluster_id)
+  {
+    $sql = "select name from cluster where cluster_id='$cluster_id'";
+    $res = $mysqli->query($sql);
+    if( ! $res ) 
+    {
+      put_error(1,"SQL Error. Can't display servers");
+      return false;
+    }
+    
+    if ($res->num_rows) 
+    {
+      list($cluster_name) = $res->fetch_array();
+    }
+  }
+  
+  $sql = "select
+		inet6_ntoa(vs.ip_address) as ip_address, 
+                vs.port, 
+                vs.fwmark, 
+                vs.group, 
+                vs.lvs_sched, 
+                vs.lvs_method,
+                vs.persistence_timeout,
+                vs.protocol,
+                c.cluster_id,
+                c.name as cluster_name
+	from virtual_server vs
+	left join cluster c
+        on c.cluster_id=vs.cluster_id ";
+
+  if ($cluster_id) 
+  {
+    $sql .= "where vs.cluster_id='$cluster_id' ";
+  }
+    
+  $sql .= "order by vs.ip_address,vs.port,vs.protocol";
+
+  $res = $mysqli->query($sql);
+  if( ! $res ) 
+  {
+	echo $mysqli->error;
+	exit(1);
+	
+    put_error(1,"SQL Error. Can't display servers");
+    return false;
+  }
+  
+  $title = "Manage linux Virtual Servers ";
+  if ($cluster_name)
+  {
+    $title .= "for cluster $cluster_name";
+  }
+  
+?>
+  <h3 onmouseover="popup('click to display or hide')" onclick="$('#t_virtual_server').slideToggle()"><?php echo $title ?></h3>
+  <div id="t_virtual_server">
+  <table class="bordered sorttable">
+    <thead>
+    <tr>
+      <th>IP Address</th>
+      <th>Port</th>
+      <th>Protocol</th>
+      <th>Method</th>
+      <th>Scheduler</th>
+      <th>Persistence</th>
+      <th>Real Servers</th>
+      <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+<?php
+
+  $cpt = 0;
+  while ( $row = $res->fetch_assoc() )
+  {
+    extract($row);
+
+?>
+    <tr>
+      <td><?php echo $ip_address ?></td>
+      <td><?php echo $port ?></td>      
+      <td><?php echo $protocol ?></td>
+      <td><?php echo $lvs_method ?></td>
+      <td><?php echo $lvs_sched ?></td>
+      <td><?php echo $persistence_timeout?$persistence_timeout:"0" ?></td>
+      <td><?php echo "-"?></td>
+      <td>
+        <a href="form_virtual_server.php?virtual_server_id=<?php echo $virtual_server_id ?>" rel=modal:open><img src="icons/server_edit.png" title="edit virtual server" /></a>
+        &nbsp;
+        <a href="?action=delete&virtual_server_id=<?php echo $virtual_server_id ?>" onclick="return(confirm('Delete Linux Virtual Server <?php echo "$protocol:$ip_address:$port" ?> ?'));"><img src="icons/server_delete.png" title="delete virtual server" /></a>
+      </td>
+
+    </tr>
+<?php
+    $cpt ++;
+  }
+?>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="7">&nbsp;</td>
+      <td>
+        <a href="form_virtual_server.php<?php echo $cluster_id?"?cluster_id=$cluster_id":'' ?>" rel="modal:open"><img src="icons/server_add.png" title="add Linux Virtual Server" /></a></td>
+      </td>
+    </tr>
+  </tfoot>
+  </table>
+  </div>
+<?php
+}
 
 /* actions */
 // Check parameters
@@ -1550,6 +1672,7 @@ if(isset( $_REQUEST['cluster_id'] ) ) $cluster_id = $_REQUEST['cluster_id']; els
 if(isset( $_REQUEST['lb_id'] ) ) $lb_id = $_REQUEST['lb_id']; else $lb_id= NULL;
 if(isset( $_REQUEST['ip'] ) ) $ip = $_REQUEST['ip']; else $ip = NULL;
 if(isset( $_REQUEST['virtual_router_id'] ) ) $virtual_router_id = $_REQUEST['virtual_router_id']; else $virtual_router_id= NULL;
+if(isset( $_REQUEST['virtual_server_id'] ) ) $virtual_server_id = $_REQUEST['virtual_server_id']; else $virtual_server_id= NULL;
 if(isset( $_REQUEST['sync_group_id'] ) ) $sync_group_id = $_REQUEST['sync_group_id']; else $sync_group_id = NULL;
 if(isset( $_REQUEST['script_id'] ) ) $script_id = $_REQUEST['script_id']; else $script_id= NULL;
 
@@ -1633,6 +1756,9 @@ switch($action) {
     if($f_type == "cluster") form_cluster();
     if($f_type == "server") form_server($lb_id, $cluster_id);
     break;
+  case "virtual_servers":
+    table_virtual_server();
+    break;
   case "servers":
     table_server();
     break;
@@ -1678,7 +1804,7 @@ unlink($tmpfname);
 
 */
 
-update_network_information(22);
+// update_network_information(22);
 
 
 // table_ip_adresses('virtual',1);
