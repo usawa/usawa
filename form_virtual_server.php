@@ -190,12 +190,12 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
 <!--     Ip storage -->
     <div>
       <label for="ip_storage">IP Storage Method</label>
-        <input type="radio" onclick="$('#vs_ip').show(); $('#vs_group').hide(); $('#vs_fwmark').hide(); $.modal.resize();" name="lvs_type" value="ip" <?php echo $lvs_type=='ip'?'checked="checked"':"" ?>/>VRRP
-        <input type="radio" onclick="$('#vs_ip').hide(); $('#vs_group').show(); $('#vs_fwmark').hide(); $.modal.resize();" name="lvs_type" value="group" <?php echo $lvs_type=='group'?'checked="checked"':"" ?>/>Static
-        <input type="radio" onclick="$('#vs_ip').hide(); $('#vs_group').hide(); $('#vs_fwmark').show(); $.modal.resize();" name="lvs_type" value="fwmark" <?php echo $lvs_type=='fwmark'?'checked="checked"':"" ?>/>Do nothing
+        <input type="radio" onclick="$('#vrrp_instance').show(); $.modal.resize();" name="ip_storage" value="vrrp" />VRRP
+        <input type="radio" onclick="$('#vrrp_instance').hide(); $.modal.resize();" name="ip_storage" value="static" />Static
+        <input type="radio" onclick="$('#vrrp_instance').hide(); $.modal.resize();" name="ip_storage" value="nowhere" checked="checked" />Do nothing
     </div>
 
-    <div>
+    <div id="vrrp_instance" style="display:none">
 	<label for="virtual_router_id">VRRP instance</label>
 	<select id="vrrp_list" name="virtual_router_id">
 	</select>

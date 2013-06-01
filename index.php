@@ -1681,8 +1681,33 @@ function update_virtual_server()
 		put_error(1,"LVS $lvs_name not inserted");
 		redirect_to($_SERVER['HTTP_REFERER']);
 	}
+	
   }
 
+  // Static Ip address 
+  if( $ip_storage == 'static' )  {
+	$sql = "insert into ip_address (ip, mask, cluster_id)
+		values ( inet6_aton($ip_address), '32', $cluster_id )
+		on duplicate key update
+			cluster_id=$cluster_id, 
+			virtual_router_id=NULL";
+	if (! $mysqli->query($sql) ) {
+		put_error(1,"IP $ip_address not inserted or updated.");
+	}
+  }
+
+  // VRRP IP address
+  if( $ip_storage == 'vrrp' && $virtual_router_id )  {
+	$sql = "insert into ip_address (ip, mask, virtual_router_id)
+		values ( inet6_aton($ip_address), '32', '$virtual_router_id' )
+		on duplicate key update
+			cluster_id=NULL, 
+			virtual_router_id='$virtual_router_id'";
+	if (! $mysqli->query($sql) ) {
+		put_error(1,"IP $ip_address not inserted or updated.");
+	}
+  }
+  
   redirect_to($_SERVER['HTTP_REFERER']);
 }
 
@@ -1885,6 +1910,7 @@ switch($action) {
   case "delete":
     if($cluster_id) delete_cluster($cluster_id);
     if($lb_id) delete_server($lb_id);
+    if($virtual_server_id) delete_virtual_server($virtual_server_id);
     if($virtual_router_id) delete_vrrp_instance($virtual_router_id);
     if($ip) delete_ip_address($ip);
     if($sync_group_id) delete_vrrp_sync_group($sync_group_id);
