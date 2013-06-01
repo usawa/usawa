@@ -9,12 +9,18 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
   
   $lvs_type="ip";
   
+ ?>
+ <script type="text/javascript">
+ </script>
+
+<?php
+  
   if ( $virtual_server_id ) {
   
     $sql = "select  inet6_ntoa(ip_address) as ip_address, 
                     port, 
                     fwmark, 
-                    group, 
+                    `group`, 
                     delay_loop, 
                     lvs_sched, 
                     lvs_method,
@@ -36,6 +42,7 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
     
     if ( ($res = $mysqli->query($sql) ) && $res->num_rows) {
       $row = $res->fetch_assoc();
+//       print_r($row);
       extract($row);
     }
   }
@@ -76,7 +83,7 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
     }
 
 ?>    
-    <input type="hidden" name="f_type" value="virtual_serverserver" />
+    <input type="hidden" name="f_type" value="virtual_server" />
 
     <input type="hidden" name="action" value="update" />
 
@@ -84,7 +91,7 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
 <!--     fwmark, group -->
     <div>
       <label for="method">LVS Method</label>
-        <input type="radio" onclick="$('#vs_ip').show(); $('#vs_group').hide(); $('#vs_fwmark').hide(); $.modal.resize();" name="lvs_type" value="ip_port" <?php echo $lvs_type=='ip'?'checked="checked"':"" ?>/>IP
+        <input type="radio" onclick="$('#vs_ip').show(); $('#vs_group').hide(); $('#vs_fwmark').hide(); $.modal.resize();" name="lvs_type" value="ip" <?php echo $lvs_type=='ip'?'checked="checked"':"" ?>/>IP
         <input type="radio" onclick="$('#vs_ip').hide(); $('#vs_group').show(); $('#vs_fwmark').hide(); $.modal.resize();" name="lvs_type" value="group" <?php echo $lvs_type=='group'?'checked="checked"':"" ?>/>Group
         <input type="radio" onclick="$('#vs_ip').hide(); $('#vs_group').hide(); $('#vs_fwmark').show(); $.modal.resize();" name="lvs_type" value="fwmark" <?php echo $lvs_type=='fwmark'?'checked="checked"':"" ?>/>FWMark
     </div>
@@ -167,7 +174,7 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
 <!-- Cluster id -->    
     <div>
       <label for="cluster_id">Cluster</label> 
-      <select name="cluster_id">
+      <select name="cluster_id" onChange="update_vrrp(this.options[this.selectedIndex].value)">
         <option value="">-</option>
 <?php
       while ( $row = $res_cluster->fetch_assoc() )
@@ -178,6 +185,20 @@ function form_virtual_server($virtual_server_id = NULL, $cluster_id = NULL)
       }
 ?>
       </select>
+    </div>
+
+<!--     Ip storage -->
+    <div>
+      <label for="ip_storage">IP Storage Method</label>
+        <input type="radio" onclick="$('#vs_ip').show(); $('#vs_group').hide(); $('#vs_fwmark').hide(); $.modal.resize();" name="lvs_type" value="ip" <?php echo $lvs_type=='ip'?'checked="checked"':"" ?>/>VRRP
+        <input type="radio" onclick="$('#vs_ip').hide(); $('#vs_group').show(); $('#vs_fwmark').hide(); $.modal.resize();" name="lvs_type" value="group" <?php echo $lvs_type=='group'?'checked="checked"':"" ?>/>Static
+        <input type="radio" onclick="$('#vs_ip').hide(); $('#vs_group').hide(); $('#vs_fwmark').show(); $.modal.resize();" name="lvs_type" value="fwmark" <?php echo $lvs_type=='fwmark'?'checked="checked"':"" ?>/>Do nothing
+    </div>
+
+    <div>
+	<label for="virtual_router_id">VRRP instance</label>
+	<select id="vrrp_list" name="virtual_router_id">
+	</select>
     </div>
     
     <div><label for="buttons">&nbsp;</label> <input class="styled-button-10" type="submit" value="Submit" /></div>
@@ -256,6 +277,50 @@ var validator = new FormValidator('virtual_server_form', [{
     } */
 });
 
+var vrrp = new Array();
+vrrp[0]="";
+ <?php
+ 
+  // Build JS list of all vrrp instances to populate list
+  $a_vrrp = array();
+  $sql_vrrp = " select virtual_router_id, cluster_id, name, interface from vrrp_instance order by cluster_id";
+  if( ($res_vrrp = $mysqli->query($sql_vrrp) ) && $res_vrrp->num_rows) {
+	while($row = $res_vrrp->fetch_assoc() )
+	{
+		extract($row);
+		if( ! isset($a_vrrp[$cluster_id])) $a_vrrp[$cluster_id] ="\"$name|$virtual_router_id\",";
+		else $a_vrrp[$cluster_id].="\"$name|$virtual_router_id\",";
+	}
+  }
+  foreach ($a_vrrp as $cluster_id => $vrrp_list)
+  {
+	$vrrp_list = "vrrp[$cluster_id]=[".substr_replace($vrrp_list ,"",-1)."];";
+	echo $vrrp_list;
+  }
+?>  
+
+
+
+function update_vrrp(selected_cluster) {
+	var vrrp_list = document.getElementById('vrrp_list');
+		
+	vrrp_list.options.length=0;
+	
+	if (selected_cluster>0)
+	{
+		for (i=0; i<vrrp[selected_cluster].length; i++)
+		vrrp_list.options[vrrp_list.options.length]=new Option(vrrp[selected_cluster][i].split("|")[0], vrrp[selected_cluster][i].split("|")[1])
+	}	
+}
+
+<?php
+  if(@$cluster_id)
+  {
+?>
+update_vrrp(<?php echo $cluster_id ?>);
+<?php
+  }
+?>  
   </script>
   
 <?php

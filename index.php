@@ -1559,6 +1559,7 @@ function delete_ip_address($ip_address = NULL)
 function update_virtual_server()
 {
   global $mysqli;
+  global $virtual_server_dictionnary;
   
   extract($_POST);
   
@@ -1567,12 +1568,28 @@ function update_virtual_server()
 	case "ip":
 		$_POST['fwmark'] = null ;
 		$_POST['group'] = null ;
+		
+		if($ip_address == null || $port == null || $protocol == null)
+		{
+			put_error(1,"Can't insert or update LVS. Missing fields : IP, Port or Protocol.");
+			redirect_to($_SERVER['HTTP_REFERER']);
+		}
+		
+		$lvs_name="$protocol:$ip_address:$port";
+		
 		break;
 	case "group":
 		$_POST['fwmark'] = null ;
 		$_POST['ip'] = null ;
 		$_POST['port'] = null ;
 		$_POST['protocol'] = null ;
+		if($group == null )
+		{
+			put_error(1,"Can't insert or update LVS. Missing field : Group.");
+			redirect_to($_SERVER['HTTP_REFERER']);
+		}
+		$lvs_name = "group $group";
+		
 		break;
 		
 	case "fwmark":
@@ -1580,30 +1597,92 @@ function update_virtual_server()
 		$_POST['ip'] = null ;
 		$_POST['port'] = null ;
 		$_POST['protocol'] = null ;
+		if($fwmark == null )
+		{
+			put_error(1,"Can't insert or update LVS. Missing field : Firewall mark.");
+			redirect_to($_SERVER['HTTP_REFERER']);
+		}
+		
+		$lvs_name="fwmark $fwmark";
+		
 		break;
   }
   
   build_default_fields($virtual_server_dictionnary);
-  // state/priority arrays : update vrrp details per server
-  if($state)
-  {
-    foreach($state as $lb_id => $initial_state)
-    {
-      $initial_priority=$priority[$lb_id];
-      
-      // Initial priority 0-255
-      $initial_priority = min($initial_priority,255) ;
-      $initial_priority = max($initial_priority,0);
-      
-      $sql = "insert into vrrp_details_per_server 
-                (lb_id,virtual_router_id,state,priority)
-                values( '$lb_id', '$virtual_router_id', '$initial_state', '$initial_priority' )
-                on duplicate key update state='$initial_state', priority='$initial_priority'";
   
-      $mysqli->query($sql);      
-      
-    }
+  extract($_POST);
+  
+  // check if service already exists
+  
+  if(@$virtual_server_id) {
+	$sql = "update virtual_server 
+		set
+		 ip_address=inet6_aton($ip_address), 
+		 port=$port,
+		 fwmark=$fwmark,
+		 `group`=$group,
+		 delay_loop=$delay_loop,
+		 lvs_sched=$lvs_sched,
+		 lvs_method=$lvs_method,
+                 persistence_timeout=$persistence_timeout, 
+                 persistence_granularity=inet6_aton($persistence_granularity),
+                 protocol=$protocol,
+                 ha_suspend=$ha_suspend,
+                 virtualhost=$virtualhost,
+                 alpha=$alpha, 
+                 omega=$omega,
+                 quorum=$quorum,
+                 hysteresis=$hysteresis,
+                 quorum_up=$quorum_up,
+                 quorum_down=$quorum_down,
+                 sorry_server_ip=inet6_aton($sorry_server_ip), 
+                 sorry_server_port=$sorry_server_port, 
+                 cluster_id=$cluster_id
+		where virtual_server_id='$virtual_router_id'
+	";
+	if (! $mysqli->query($sql) ) {
+		put_error(1,"LVS $lvs_name not updated");
+		redirect_to($_SERVER['HTTP_REFERER']);
+	}
+
+  } else {
+	$sql = "insert into virtual_server 
+		(ip_address, port ,fwmark, `group`, delay_loop, lvs_sched, lvs_method,
+                    persistence_timeout, persistence_granularity, protocol, ha_suspend, virtualhost,
+                    alpha, omega, quorum, hysteresis, quorum_up, quorum_down, sorry_server_ip, 
+                    sorry_server_port, cluster_id)
+                values (
+			inet6_aton($ip_address), 
+			$port,
+			$fwmark,
+			$group,
+			$delay_loop,
+			$lvs_sched,
+			$lvs_method,
+			$persistence_timeout, 
+			inet6_aton($persistence_granularity),
+			$protocol,
+			$ha_suspend,
+			$virtualhost,
+			$alpha, 
+			$omega,
+			$quorum,
+			$hysteresis,
+			$quorum_up,
+			$quorum_down,
+			inet6_aton($sorry_server_ip), 
+			$sorry_server_port, 
+			$cluster_id
+                )
+	";
+	
+	if (! ($mysqli->query($sql) && $mysqli->affected_rows ) ) {
+	
+		put_error(1,"LVS $lvs_name not inserted");
+		redirect_to($_SERVER['HTTP_REFERER']);
+	}
   }
+
   redirect_to($_SERVER['HTTP_REFERER']);
 }
 
@@ -1630,6 +1709,7 @@ function table_virtual_server($cluster_id = NULL)
   }
   
   $sql = "select
+		vs.virtual_server_id,
 		inet6_ntoa(vs.ip_address) as ip_address, 
                 vs.port, 
                 vs.fwmark, 
@@ -1701,9 +1781,9 @@ function table_virtual_server($cluster_id = NULL)
       <td><?php echo $persistence_timeout?$persistence_timeout:"0" ?></td>
       <td><?php echo "-"?></td>
       <td>
-        <a href="form_virtual_server.php?virtual_server_id=<?php echo $virtual_server_id ?>" rel=modal:open><img src="icons/server_edit.png" title="edit virtual server" /></a>
+        <a href="form_virtual_server.php?virtual_server_id=<?php echo $virtual_server_id ?>" rel=modal:open><img src="icons/building_edit.png" title="edit virtual server" /></a>
         &nbsp;
-        <a href="?action=delete&virtual_server_id=<?php echo $virtual_server_id ?>" onclick="return(confirm('Delete Linux Virtual Server <?php echo "$protocol:$ip_address:$port" ?> ?'));"><img src="icons/server_delete.png" title="delete virtual server" /></a>
+        <a href="?action=delete&virtual_server_id=<?php echo $virtual_server_id ?>" onclick="return(confirm('Delete Linux Virtual Server <?php echo "$protocol:$ip_address:$port" ?> ?'));"><img src="icons/building_delete.png" title="delete virtual server" /></a>
       </td>
 
     </tr>
@@ -1716,13 +1796,30 @@ function table_virtual_server($cluster_id = NULL)
     <tr>
       <td colspan="7">&nbsp;</td>
       <td>
-        <a href="form_virtual_server.php<?php echo $cluster_id?"?cluster_id=$cluster_id":'' ?>" rel="modal:open"><img src="icons/server_add.png" title="add Linux Virtual Server" /></a></td>
+        <a href="form_virtual_server.php<?php echo $cluster_id?"?cluster_id=$cluster_id":'' ?>" rel="modal:open"><img src="icons/building_add.png" title="add Linux Virtual Server" /></a></td>
       </td>
     </tr>
   </tfoot>
   </table>
   </div>
 <?php
+}
+
+function delete_virtual_server($virtual_server_id = NULL)
+{
+  global $mysqli;
+    
+  if ($virtual_server_id) 
+  {
+
+    $sql = "delete from virtual_server
+          where virtual_server_id='$virtual_server_id'";
+    $res = $mysqli->query($sql);
+    
+  }
+  
+  redirect_to($_SERVER['HTTP_REFERER']);
+
 }
 
 /* actions */
@@ -1749,6 +1846,10 @@ switch($action) {
       
       case "server":
         update_server();
+        break;
+
+      case "virtual_server":
+        update_virtual_server();
         break;
     
       case "vrrp_instance":
